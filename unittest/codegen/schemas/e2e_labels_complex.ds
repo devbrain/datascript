@@ -1,0 +1,163 @@
+/**
+ * Comprehensive test for labels, alignment, nested structs, and unions
+ *
+ * This schema represents a complex binary file format with:
+ * - Headers with absolute offset labels
+ * - Nested struct hierarchies
+ * - Unions with different field types
+ * - Alignment requirements
+ * - Field access in labels
+ */
+
+/** File type enumeration */
+enum uint8 FileType {
+    TYPE_IMAGE = 1,
+    TYPE_AUDIO = 2,
+    TYPE_VIDEO = 3
+};
+
+/** Nested metadata structure */
+struct Timestamp {
+    uint32 seconds;
+    uint32 microseconds;
+};
+
+/** Header with offset information */
+struct FileHeader {
+    uint32 magic;           // Magic number
+    uint32 version;         // File version
+    uint32 data_offset;     // Absolute offset to data section
+    uint32 metadata_offset; // Absolute offset to metadata
+    Timestamp created;      // Creation timestamp
+};
+
+/** Image-specific data */
+struct ImageData {
+    uint32 width;
+    uint32 height;
+    uint8 bpp;              // Bits per pixel
+    align(4):               // Align to 4-byte boundary
+    uint32 pixel_format;
+};
+
+/** Audio-specific data */
+struct AudioData {
+    uint32 sample_rate;
+    uint16 channels;
+    uint16 bits_per_sample;
+    align(8):               // Align to 8-byte boundary
+    uint64 total_samples;
+};
+
+/** Video-specific data */
+struct VideoData {
+    uint32 width;
+    uint32 height;
+    uint32 fps;
+    uint8 codec;
+    align(4):
+    uint32 bitrate;
+};
+
+/** Union based on file type - parameterized choice */
+choice TypeSpecificData(FileType file_type) on file_type {
+    case TYPE_IMAGE:
+        ImageData image_data;
+    case TYPE_AUDIO:
+        AudioData audio_data;
+    case TYPE_VIDEO:
+        VideoData video_data;
+};
+
+/** Metadata section with nested structures */
+struct Metadata {
+    uint8 flags;
+    align(4):
+    uint32 checksum;
+    Timestamp modified;     // Modification timestamp
+};
+
+/**
+ * Complete file structure with labels, alignment, nesting, and unions
+ *
+ * Layout:
+ * - FileHeader (24 bytes after alignment)
+ * - Padding to data_offset
+ * - TypeSpecificData (varies by type)
+ * - Padding to metadata_offset
+ * - Metadata
+ */
+struct ComplexFile {
+    FileHeader header;
+    FileType file_type;
+    header.data_offset:                 // Jump to data section (absolute offset)
+    TypeSpecificData(file_type) type_specific_data;
+    header.metadata_offset:             // Jump to metadata section (absolute offset)
+    Metadata metadata;
+};
+
+/**
+ * Test nested labels with field access chains
+ */
+struct NestedOffsets {
+    uint32 level1_offset;
+    uint32 level2_offset;
+};
+
+struct NestedData {
+    NestedOffsets offsets;
+    offsets.level1_offset:              // First jump (absolute)
+    uint32 first_value;
+    align(8):
+    offsets.level2_offset:              // Second jump (absolute)
+    uint64 second_value;
+};
+
+/**
+ * Test multiple unions with labels
+ */
+enum uint8 DataFormat {
+    FORMAT_COMPACT = 1,
+    FORMAT_EXTENDED = 2
+};
+
+struct CompactFormat {
+    uint16 value;
+};
+
+struct ExtendedFormat {
+    uint32 value;
+    uint32 extra;
+};
+
+choice FormatData(DataFormat format) on format {
+    case FORMAT_COMPACT:
+        CompactFormat compact;
+    case FORMAT_EXTENDED:
+        ExtendedFormat extended;
+};
+
+struct MultiDataFile {
+    uint32 offset1;
+    uint32 offset2;
+    align(4):
+    offset1:                            // Jump to first data (absolute)
+    uint16 data1;
+    align(4):
+    offset2:                            // Jump to second data (absolute)
+    uint32 data2;
+};
+
+/** Test multiple choice fields with labels */
+struct MultiUnionFile {
+    uint32 offset1;
+    uint32 offset2;
+    DataFormat format1;
+    DataFormat format2;
+    align(4):
+    offset1:                            // Jump to first choice (absolute)
+    FormatData(format1) data1;
+    align(4):
+    offset2:                            // Jump to second choice (absolute)
+    FormatData(format2) data2;
+};

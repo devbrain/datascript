@@ -1,0 +1,63 @@
+/**
+ * End-to-End Test: Endianness
+ * Tests little-endian, big-endian, and mixed endianness
+ */
+
+/** Little-endian (default) */
+struct LittleEndianData {
+    uint16 word;
+    uint32 dword;
+    uint64 qword;
+};
+
+/** Big-endian */
+struct BigEndianData {
+    big uint16 word;
+    big uint32 dword;
+    big uint64 qword;
+};
+
+/** Mixed endianness in same struct */
+struct MixedEndianData {
+    uint16 le_word;
+    big uint16 be_word;
+    uint32 le_dword;
+    big uint32 be_dword;
+};
+
+/** Network packet header (typically big-endian) */
+struct NetworkHeader {
+    big uint16 packet_length;
+    big uint16 packet_id;
+    big uint32 timestamp;
+    uint8 flags;
+};
+
+/** File header with magic */
+struct FileHeader {
+    uint8 magic[4];
+    big uint32 file_size;
+    uint16 version;
+    big uint16 flags;
+};
+
+/** Mixed with functions */
+struct EndianConversion {
+    big uint16 be_value;
+    uint16 le_value;
+
+    /** Get big-endian value */
+    function uint16 get_be() {
+        return be_value;
+    }
+
+    /** Get little-endian value */
+    function uint16 get_le() {
+        return le_value;
+    }
+
+    /** Check if values are equal */
+    function bool are_equal() {
+        return be_value == le_value;
+    }
+};

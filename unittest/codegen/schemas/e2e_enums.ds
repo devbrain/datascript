@@ -1,0 +1,70 @@
+/**
+ * End-to-End Test: Enumerations
+ * Tests enum definitions and usage
+ */
+
+/** Simple enum */
+enum uint8 Color {
+    RED = 0,
+    GREEN = 1,
+    BLUE = 2,
+    YELLOW = 3
+};
+
+/** Protocol type enum */
+enum uint8 ProtocolType {
+    TCP = 6,
+    UDP = 17,
+    ICMP = 1,
+    IGMP = 2
+};
+
+/** File type enum with larger values */
+enum uint16 FileType {
+    UNKNOWN = 0,
+    TEXT = 100,
+    BINARY = 200,
+    IMAGE = 300,
+    VIDEO = 400
+};
+
+/** Struct using enums */
+struct EnumTest {
+    Color color;
+    ProtocolType protocol;
+    FileType file_type;
+
+    /** Check if color is primary */
+    function bool is_primary_color() {
+        return color == Color.RED ||
+               color == Color.GREEN ||
+               color == Color.BLUE;
+    }
+
+    /** Check if TCP protocol */
+    function bool is_tcp() {
+        return protocol == ProtocolType.TCP;
+    }
+};
+
+/** Enum with flags */
+enum uint8 FileMode {
+    READ = 1,
+    WRITE = 2,
+    EXECUTE = 4,
+    ADMIN = 8
+};
+
+struct FilePermissions {
+    FileMode mode;
+
+    /** Check if readable */
+    function bool can_read() {
+        return (mode & FileMode.READ) != 0;
+    }
+
+    /** Check if writable */
+    function bool can_write() {
+        return (mode & FileMode.WRITE) != 0;
+    }
+};

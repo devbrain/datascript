@@ -1,0 +1,76 @@
+/** Network Protocol Example - Complete Library Mode Demo */
+package net.protocol;
+
+/** Protocol version */
+const uint8 PROTOCOL_VERSION = 1;
+
+/** Magic signature for packet validation */
+const uint32 PACKET_MAGIC = 0x4E455450;  // "NETP"
+
+/** Maximum payload size */
+const uint16 MAX_PAYLOAD_SIZE = 8192;
+
+/** Packet type enumeration */
+enum uint8 PacketType {
+    /** Connection request packet */
+    CONNECT = 1,
+    /** Data transfer packet */
+    DATA = 2,
+    /** Acknowledgment packet */
+    ACK = 3,
+    /** Disconnect packet */
+    DISCONNECT = 4
+};
+
+/** Connection flags */
+enum uint8 ConnectionFlags {
+    NONE = 0,
+    ENCRYPTED = 1,
+    COMPRESSED = 2,
+    PRIORITY = 4
+};
+
+/** IPv4 address */
+struct IPv4Address {
+    uint8 octets[4];
+};
+
+/** Timestamp with microsecond precision */
+struct Timestamp {
+    /** Seconds since epoch */
+    uint64 seconds;
+    /** Microseconds */
+    uint32 microseconds;
+};
+
+/** Packet header */
+struct PacketHeader {
+    /** Magic number for validation */
+    uint32 magic;
+    /** Protocol version */
+    uint8 version;
+    /** Packet type */
+    PacketType type;
+    /** Connection flags */
+    ConnectionFlags flags;
+    /** Sequence number */
+    uint32 sequence;
+    /** Payload length in bytes */
+    uint16 payload_length;
+    /** Timestamp */
+    Timestamp timestamp;
+};
+
+/** Complete network packet */
+struct NetworkPacket {
+    /** Packet header */
+    PacketHeader header;
+    /** Source address */
+    IPv4Address source;
+    /** Destination address */
+    IPv4Address destination;
+    /** Variable-length payload */
+    uint8 payload[header.payload_length];
+    /** CRC32 checksum */
+    uint32 checksum;
+};

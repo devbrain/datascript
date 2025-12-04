@@ -1,0 +1,353 @@
+; DataScript ABNF Specification
+; Updated to reflect the actual parser implementation (datascript_parser.y)
+; Last updated: December 4, 2025
+
+; -----------------------------------------------------------------------------
+; Core Definitions (RFC 5234 style)
+; -----------------------------------------------------------------------------
+SP               = %x20
+HTAB             = %x09
+DQUOTE           = %x22
+CR               = %x0D
+LF               = %x0A
+CRLF             = CR LF
+WSP              = SP / HTAB
+EOL              = CRLF / LF / CR
+VCHAR            = %x21-7E ; visible (printing) characters
+
+; -----------------------------------------------------------------------------
+; Whitespace and Comments
+; -----------------------------------------------------------------------------
+S                = *(WSP / EOL / comment)
+comment          = block-comment / line-comment / doc-comment
+line-comment     = "//" *(WSP / VCHAR) EOL
+block-comment    = "/*" c-content "*/"
+doc-comment      = "/**" doc-content "*/"  ; Javadoc-style documentation
+c-content        = *(not-star / star-not-slash)
+doc-content      = *(not-star / star-not-slash)
+not-star         = %x00-29 / %x2B-FF ; Any byte except '*'
+star-not-slash   = "*" (%x00-2E / %x30-FF) ; a '*' not followed by a '/'
+
+; -----------------------------------------------------------------------------
+; Top-level definition
+; -----------------------------------------------------------------------------
+datascript-spec  = *S *(module-item *S)
+
+module-item      = constant-def
+                 / subtype-def
+                 / constraint-def
+                 / package-decl
+                 / import-decl
+                 / endianness-directive
+                 / type-definition
+
+; -----------------------------------------------------------------------------
+; Lexical Elements
+; -----------------------------------------------------------------------------
+ALPHA            = %x41-5A / %x61-7A
+DIGIT            = %x30-39
+HEXDIG           = DIGIT / "a" / "b" / "c" / "d" / "e" / "f" / "A" / "B" / "C" / "D" / "E" / "F"
+identifier       = (ALPHA / "_") *(ALPHA / DIGIT / "_")
+qualified-name   = identifier *("." identifier)
+
+; -----------------------------------------------------------------------------
+; Literals
+; -----------------------------------------------------------------------------
+integer-literal  = dec-literal / hex-literal / oct-literal / bin-literal
+dec-literal      = 1*DIGIT
+hex-literal      = "0x" 1*HEXDIG
+oct-literal      = "0" 1*("0" / "1" / "2" / "3" / "4" / "5" / "6" / "7")
+bin-literal      = "0" 1*("0" / "1") "b"
+string-literal   = DQUOTE *(%x20-21 / %x23-5B / %x5D-7E / escaped-char) DQUOTE
+escaped-char     = "\" ("n" / "t" / "r" / "\" / DQUOTE)
+boolean-literal  = "true" / "false"
+
+; -----------------------------------------------------------------------------
+; Documentation
+; -----------------------------------------------------------------------------
+optional-docstring = *doc-comment  ; Accepts multiple, uses last one
+
+; -----------------------------------------------------------------------------
+; Package and Import
+; -----------------------------------------------------------------------------
+package-decl     = optional-docstring "package" *S qualified-name *S ";"
+import-decl      = "import" *S qualified-name *S ["." *S "*"] *S ";"
+
+; -----------------------------------------------------------------------------
+; Global Endianness Directive
+; -----------------------------------------------------------------------------
+endianness-directive = ("little" / "big") *S ";"
+
+; -----------------------------------------------------------------------------
+; Constants
+; -----------------------------------------------------------------------------
+constant-def     = optional-docstring "const" *S type-specifier *S identifier *S "=" *S expression *S ";"
+
+; -----------------------------------------------------------------------------
+; Subtypes
+; -----------------------------------------------------------------------------
+subtype-def      = optional-docstring "subtype" *S type-specifier *S identifier *S ":" *S expression *S ";"
+
+; -----------------------------------------------------------------------------
+; Constraints
+; -----------------------------------------------------------------------------
+constraint-def   = optional-docstring "constraint" *S identifier *S [param-list] *S "{" *S expression *S "}" *S ";"
+
+; -----------------------------------------------------------------------------
+; Parameter List (for parameterized types and constraints)
+; -----------------------------------------------------------------------------
+param-list       = "(" *S param *S *("," *S param *S) ")"
+param            = type-specifier *S identifier
+
+; -----------------------------------------------------------------------------
+; Type Definitions
+; -----------------------------------------------------------------------------
+type-definition  = struct-def / union-def / choice-def / enum-def
+
+; -----------------------------------------------------------------------------
+; Type Specifiers
+; -----------------------------------------------------------------------------
+type-specifier   = array-type / base-type-specifier
+
+base-type-specifier = primitive-type
+                    / string-type
+                    / bool-type
+                    / bit-field-type
+                    / qualified-name
+                    / type-instantiation
+
+; Primitive Types
+primitive-type   = [("little" / "big") *S] integer-type
+integer-type     = "uint8" / "uint16" / "uint32" / "uint64" / "uint128"
+                 / "int8" / "int16" / "int32" / "int64" / "int128"
+
+; Other Basic Types
+string-type      = "string"
+bool-type        = "bool"
+
+; Bit Field Types
+bit-field-type   = "bit" *S ":" *S integer-literal
+                 / "bit" *S "<" *S shift-expression *S ">"
+
+; Type Instantiation (Parameterized Types)
+type-instantiation = qualified-name *S "(" *S argument-list *S ")"
+argument-list    = expression *S *("," *S expression *S)
+
+; Array Types
+array-type       = base-type-specifier *S "[" *S "]"                          ; Unsized
+                 / base-type-specifier *S "[" *S expression *S "]"            ; Fixed-size
+                 / base-type-specifier *S "[" *S expression *S ".." *S expression *S "]"  ; Ranged
+                 / base-type-specifier *S "[" *S ".." *S expression *S "]"    ; Ranged (0..max)
+
+; -----------------------------------------------------------------------------
+; Struct Definitions
+; -----------------------------------------------------------------------------
+struct-def       = optional-docstring ["struct" *S] identifier *S [param-list] *S "{" *S [struct-body-list] *S "}" *S ";"
+
+struct-body-list = struct-body-item *S *(struct-body-item *S)
+
+struct-body-item = alignment-directive
+                 / label-directive
+                 / [doc-comment *S] (field-def-nodoc / function-def-nodoc / inline-union-field / inline-struct-field)
+
+alignment-directive = "align" *S "(" *S expression *S ")" *S ":"
+
+label-directive  = label-expression *S ":"
+label-expression = primary-expression / (label-expression *S "." *S identifier)
+
+; Field Definitions
+field-def-nodoc  = type-specifier *S identifier *S [":" *S expression] *S ["=" *S expression] *S ["if" *S expression] *S ";"
+                 / type-specifier *S identifier *S "[" *S [expression] *S "]" *S ";"  ; Array shorthand
+
+; Inline Union Field
+inline-union-field = "union" *S "{" *S union-case-list *S "}" *S identifier *S ";"
+
+; Inline Struct Field
+inline-struct-field = "{" *S struct-body-list *S "}" *S identifier *S ";"
+
+; -----------------------------------------------------------------------------
+; Function Definitions
+; -----------------------------------------------------------------------------
+function-def-nodoc = "function" *S type-specifier *S identifier *S "(" *S [function-param-list] *S ")" *S "{" *S statement-list *S "}"
+
+function-param-list = param *S *("," *S param *S)
+
+statement-list   = statement *S *(statement *S)
+
+statement        = "return" *S expression *S ";"
+                 / expression *S ";"
+
+; -----------------------------------------------------------------------------
+; Union Definitions
+; -----------------------------------------------------------------------------
+union-def        = optional-docstring "union" *S identifier *S [param-list] *S "{" *S [union-case-list] *S "}" *S ";"
+
+union-case-list  = union-case *S *(union-case *S)
+
+union-case       = optional-docstring type-specifier *S identifier *S [":" *S expression] *S ["=" *S expression] *S ["if" *S expression] *S ";"
+                 / "{" *S [struct-body-list] *S "}" *S identifier *S [":" *S expression] *S ";"
+
+; -----------------------------------------------------------------------------
+; Choice Definitions (Tagged Unions)
+; -----------------------------------------------------------------------------
+choice-def       = optional-docstring "choice" *S identifier *S [param-list] *S "on" *S expression *S "{" *S choice-case-list *S "}" *S ";"
+
+choice-case-list = choice-case *S *(choice-case *S)
+
+choice-case      = case-clause-list *S field-def
+                 / "default" *S ":" *S field-def
+
+case-clause-list = case-clause *S *(case-clause *S)
+case-clause      = "case" *S expression *S ":"
+
+field-def        = optional-docstring type-specifier *S identifier *S [":" *S expression] *S ["=" *S expression] *S ["if" *S expression] *S ";"
+                 / optional-docstring type-specifier *S identifier *S "[" *S [expression] *S "]" *S ";"
+
+; -----------------------------------------------------------------------------
+; Enumeration and Bitmask Types
+; -----------------------------------------------------------------------------
+enum-def         = optional-docstring ("enum" / "bitmask") *S type-specifier *S identifier *S "{" *S enum-item-list *S "}" *S ";"
+
+enum-item-list   = enum-item *S *("," *S enum-item *S)
+
+enum-item        = optional-docstring identifier *S ["=" *S expression]
+
+; -----------------------------------------------------------------------------
+; Expressions (with Precedence)
+; -----------------------------------------------------------------------------
+
+; Full expression (includes comparisons, logical operators, and ternary)
+expression       = shift-expression
+                 / shift-expression *S ("==" / "!=" / "<" / ">" / "<=" / ">=") *S shift-expression
+                 / expression *S ("&&" / "||") *S expression
+                 / expression *S "?" *S expression *S ":" *S expression
+
+; Shift expression (arithmetic, bitwise, shifts - excludes comparisons and logical)
+; Used inside bit<> to avoid ambiguity with < >
+shift-expression = postfix-expression
+                 / unary-op *S shift-expression
+                 / shift-expression *S ("+" / "-" / "*" / "/" / "%") *S shift-expression
+                 / shift-expression *S ("<<" / ">>") *S shift-expression
+                 / shift-expression *S ("&" / "|" / "^") *S shift-expression
+                 / "(" *S expression *S ")"
+
+unary-op         = "+" / "-" / "~" / "!"
+
+; Postfix expression (field access, array indexing, function calls)
+postfix-expression = primary-expression
+                   / postfix-expression *S "." *S identifier
+                   / postfix-expression *S "[" *S expression *S "]"
+                   / postfix-expression *S "(" *S [argument-list] *S ")"
+
+; Primary expression (literals, identifiers, parentheses)
+primary-expression = integer-literal
+                   / string-literal
+                   / boolean-literal
+                   / identifier
+
+; -----------------------------------------------------------------------------
+; Operator Precedence (lowest to highest)
+; -----------------------------------------------------------------------------
+; 1. Ternary:        ?:
+; 2. Logical OR:     ||
+; 3. Logical AND:    &&
+; 4. Bitwise OR:     |
+; 5. Bitwise XOR:    ^
+; 6. Bitwise AND:    &
+; 7. Equality:       == !=
+; 8. Relational:     < > <= >=
+; 9. Shift:          << >>
+; 10. Additive:      + -
+; 11. Multiplicative: * / %
+; 12. Unary:         - + ~ !
+; 13. Postfix:       . [] ()
+
+; -----------------------------------------------------------------------------
+; Notes on Implementation
+; -----------------------------------------------------------------------------
+
+; 1. Docstrings:
+;    - Use /** ... */ syntax (Javadoc-style)
+;    - Can appear before: constants, subtypes, constraints, type definitions,
+;      fields, functions, enum items, union cases
+;    - Multiple consecutive docstrings: only the last one is used
+;    - Leading asterisks and whitespace automatically stripped
+
+; 2. Struct Shorthand Syntax:
+;    - "struct Foo { }" is equivalent to "Foo { }"
+;    - Both forms are supported
+
+; 3. Parameterized Types:
+;    - Definition: struct Buffer(uint16 capacity) { ... }
+;    - Instantiation: Buffer(16), Buffer(256)
+;    - Monomorphization: concrete types generated at compile-time
+
+; 4. Functions:
+;    - Declared inside structs
+;    - Have return type, parameters, and statement blocks
+;    - Support return statements and expression statements
+
+; 5. Inline Types:
+;    - Inline unions: union { case1; case2; } field_name;
+;    - Inline structs: { field1; field2; } field_name;
+;    - Both can have docstrings
+
+; 6. Array Syntax:
+;    - Type[]: unsized array (dynamic)
+;    - Type[10]: fixed-size array
+;    - Type[field]: variable-size array (size from expression)
+;    - Type[0..10]: ranged array (0 to 10 items)
+;    - Type[..10]: ranged array (0 to 10 items, shorthand)
+
+; 7. Field Modifiers:
+;    - Constraint: field: expression;
+;    - Default value: field = expression;
+;    - Both: field: constraint = default;
+;    - Condition: field if expression;
+
+; 8. Labels:
+;    - Simple: label:
+;    - Field access: header.offset:
+;    - Used with @ in fields: Type field @ label;
+
+; 9. Alignment:
+;    - Syntax: align(expression):
+;    - Expression evaluated at runtime (not just literals)
+
+; 10. Endianness:
+;     - Global directive: little; or big;
+;     - Per-field: little uint32 value; or big uint32 value;
+;     - Default is little-endian
+
+; 11. Choice Syntax:
+;     - Multiple case clauses: case 1: case 2: case 3: field;
+;     - Default case: default: field;
+;     - Selector: choice Foo on selector_expr { ... }
+
+; 12. Union Cases:
+;     - Simple: Type field;
+;     - Anonymous with constraint: { fields... } name: expr;
+;     - Anonymous without constraint: { fields... } name;
+;     - Empty anonymous: { } name;
+
+; 13. Token Types:
+;     Keywords: const, package, import, struct, union, choice, enum, bitmask,
+;               subtype, constraint, function, return, if, on, case, default,
+;               align, little, big, bool, string, bit
+;     Types: uint8, uint16, uint32, uint64, uint128,
+;            int8, int16, int32, int64, int128
+;     Operators: + - * / % << >> & | ^ ~ ! == != < > <= >= && || ? :
+;     Delimiters: ; , . .. : = ( ) { } [ ]
+;     Special: @ (label reference in fields)
+
+; 14. Expression Evaluation:
+;     - Constant expressions evaluated at compile-time
+;     - Runtime expressions supported in array sizes, constraints, conditions
+;     - Field references: obj.field
+;     - Array indexing: array[index]
+;     - Function calls: func(args)
+
+; 15. Error Handling:
+;     - Syntax errors reported with line numbers
+;     - Type checking in semantic analysis phase
+;     - Constraint validation at runtime

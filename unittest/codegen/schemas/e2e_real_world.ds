@@ -1,0 +1,217 @@
+/**
+ * End-to-End Test: Real-World Formats
+ * Tests realistic binary format parsing scenarios
+ */
+
+//
+// 1. PNG File Header (simplified)
+//
+
+/** PNG chunk */
+struct PNGChunk {
+    big uint32 length;
+    uint8 type[4];        // Chunk type (e.g., "IHDR", "IDAT")
+    uint8 data[length];
+    big uint32 crc;
+
+    /** Check if IHDR chunk */
+    function bool is_ihdr() {
+        return type[0] == 73 && type[1] == 72 &&
+               type[2] == 68 && type[3] == 82;
+    }
+
+    /** Check if IEND chunk */
+    function bool is_iend() {
+        return type[0] == 73 && type[1] == 69 &&
+               type[2] == 78 && type[3] == 68;
+    }
+};
+
+/** PNG signature and header */
+struct PNGHeader {
+    uint8 signature[8];   // PNG signature: 137 80 78 71 13 10 26 10
+    PNGChunk ihdr_chunk;  // First chunk must be IHDR
+
+    /** Validate PNG signature */
+    function bool is_valid_png() {
+        return signature[0] == 137 &&
+               signature[1] == 80 &&
+               signature[2] == 78 &&
+               signature[3] == 71;
+    }
+};
+
+//
+// 2. ELF Header (simplified, 32-bit)
+//
+
+/** ELF identification */
+struct ELFIdent {
+    uint8 magic[4];       // 0x7F, 'E', 'L', 'F'
+    uint8 elf_class;      // 1 = 32-bit, 2 = 64-bit (renamed from 'class' - C++ keyword)
+    uint8 data;           // 1 = little endian, 2 = big endian
+    uint8 version;        // ELF version (1)
+    uint8 padding[9];
+
+    /** Check ELF magic */
+    function bool is_elf() {
+        return magic[0] == 0x7F &&
+               magic[1] == 69 &&
+               magic[2] == 76 &&
+               magic[3] == 70;
+    }
+
+    /** Check if 32-bit */
+    function bool is_32bit() {
+        return elf_class == 1;
+    }
+
+    /** Check if little-endian */
+    function bool is_little_endian() {
+        return data == 1;
+    }
+};
+
+/** ELF header */
+struct ELFHeader {
+    ELFIdent ident;
+    uint16 type;          // Object file type
+    uint16 machine;       // Architecture
+    uint32 version;       // Object file version
+    uint32 entry;         // Entry point virtual address
+    uint32 phoff;         // Program header table file offset
+    uint32 shoff;         // Section header table file offset
+    uint32 flags;         // Processor-specific flags
+    uint16 ehsize;        // ELF header size
+    uint16 phentsize;     // Program header table entry size
+    uint16 phnum;         // Program header table entry count
+    uint16 shentsize;     // Section header table entry size
+    uint16 shnum;         // Section header table entry count
+    uint16 shstrndx;      // Section header string table index
+};
+
+//
+// 3. TLV (Type-Length-Value) Protocol
+//
+
+/** TLV entry */
+struct TLVEntry {
+    uint8 type;
+    uint8 length;
+    uint8 value[length];
+
+    /** Get type */
+    function uint8 get_type() {
+        return type;
+    }
+
+    /** Get length */
+    function uint8 get_length() {
+        return length;
+    }
+};
+
+/** TLV message */
+struct TLVMessage {
+    uint8 num_entries;
+    TLVEntry entries[num_entries];
+
+    /** Get number of entries */
+    function uint8 count() {
+        return num_entries;
+    }
+};
+
+//
+// 4. ZIP Local File Header (simplified)
+//
+
+/** ZIP local file header */
+struct ZIPLocalFileHeader {
+    uint32 signature;            // 0x04034b50
+    uint16 version_needed;
+    uint16 flags;
+    uint16 compression_method;
+    uint16 last_mod_time;
+    uint16 last_mod_date;
+    uint32 crc32;
+    uint32 compressed_size;
+    uint32 uncompressed_size;
+    uint16 filename_length;
+    uint16 extra_field_length;
+    uint8  filename[filename_length];
+    uint8  extra_field[extra_field_length];
+
+    /** Validate ZIP signature */
+    function bool is_valid_zip() {
+        return signature == 0x04034b50;
+    }
+
+    /** Check if compressed */
+    function bool is_compressed() {
+        return compression_method != 0;
+    }
+
+    /** Check if encrypted */
+    function bool is_encrypted() {
+        return (flags & 0x01) != 0;
+    }
+};
+
+//
+// 5. BMP File Header (simplified)
+//
+
+/** BMP file header */
+struct BMPFileHeader {
+    uint8  signature[2];     // 'BM'
+    uint32 file_size;
+    uint16 reserved1;
+    uint16 reserved2;
+    uint32 data_offset;
+
+    /** Validate BMP signature */
+    function bool is_bmp() {
+        return signature[0] == 66 && signature[1] == 77;
+    }
+
+    /** Get data offset */
+    function uint32 get_data_offset() {
+        return data_offset;
+    }
+};
+
+/** BMP info header (DIB header) */
+struct BMPInfoHeader {
+    uint32 header_size;      // Should be 40 for BITMAPINFOHEADER
+    int32  width;
+    int32  height;
+    uint16 planes;           // Should be 1
+    uint16 bits_per_pixel;
+    uint32 compression;
+    uint32 image_size;
+    int32  x_pixels_per_meter;
+    int32  y_pixels_per_meter;
+    uint32 colors_used;
+    uint32 colors_important;
+
+    /** Get image width */
+    function int32 get_width() {
+        return width;
+    }
+
+    /** Get image height */
+    function int32 get_height() {
+        return height > 0 ? height : -height;
+    }
+
+    /** Check if uncompressed */
+    function bool is_uncompressed() {
+        return compression == 0;
+    }
+};
+
+struct BMPFile {
+    BMPFileHeader file_header;
+    BMPInfoHeader info_header;
+};

@@ -1,0 +1,56 @@
+/**
+ * Simple types with functions - for unittest
+ * Tests basic function generation
+ */
+
+/** Configuration flags */
+struct Config {
+    uint8 flags;
+    uint16 value;
+
+    /** Check if debug flag is set */
+    function bool is_debug() {
+        return (flags & 0x01) != 0;
+    }
+
+    /** Check if verbose flag is set */
+    function bool is_verbose() {
+        return (flags & 0x02) != 0;
+    }
+
+    /** Get flag count */
+    function uint8 flag_count() {
+        return flags;
+    }
+
+    /** Check if value exceeds threshold */
+    function bool exceeds(uint16 threshold) {
+        return value > threshold;
+    }
+};
+
+/** Point with calculations */
+struct Point {
+    uint16 x;
+    uint16 y;
+
+    /** Get X coordinate */
+    function uint16 get_x() {
+        return x;
+    }
+
+    /** Get Y coordinate */
+    function uint16 get_y() {
+        return y;
+    }
+
+    /** Check if point is at origin */
+    function bool is_origin() {
+        return x == 0 && y == 0;
+    }
+
+    /** Check if X exceeds Y */
+    function bool x_greater_than_y() {
+        return x > y;
+    }
+};

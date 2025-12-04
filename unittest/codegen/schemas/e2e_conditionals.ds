@@ -1,0 +1,39 @@
+/**
+ * End-to-End Test: Conditional Fields
+ * Tests optional fields with if conditions
+ */
+
+/** Simple conditional field */
+struct SimpleConditional {
+    uint8 flags;
+    uint16 optional_value if (flags & 0x01) != 0;
+};
+
+/** Multiple conditional fields */
+struct MultipleConditionals {
+    uint8 flags;
+    uint16 field1 if (flags & 0x01) != 0;
+    uint32 field2 if (flags & 0x02) != 0;
+    uint64 field3 if (flags & 0x04) != 0;
+};
+
+/** Conditional based on value comparison */
+struct ValueConditional {
+    uint8 version;
+    uint16 legacy_field if version == 1;
+    uint32 modern_field if version >= 2;
+};
+
+/** Nested conditionals with complex expressions */
+struct ComplexConditional {
+    uint8 flags;
+    uint8 mode;
+    uint16 data1 if ((flags & 0x01) != 0) && (mode == 1);
+    uint32 data2 if ((flags & 0x02) != 0) || (mode == 2);
+};
+
+/** Conditional string field */
+struct ConditionalString {
+    uint8 has_name;
+    string name if has_name != 0;
+};

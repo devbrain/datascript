@@ -1,0 +1,45 @@
+/**
+ * End-to-End Test: Primitive Types
+ * Tests all primitive integer types, strings, and booleans
+ */
+
+/** All primitive types in one structure */
+struct AllPrimitives {
+    // Signed integers
+    int8   i8;
+    int16  i16;
+    int32  i32;
+    int64  i64;
+
+    // Unsigned integers
+    uint8  u8;
+    uint16 u16;
+    uint32 u32;
+    uint64 u64;
+
+    // Boolean
+    bool   flag;
+};
+
+/** Minimal primitive test */
+struct MinimalPrimitives {
+    uint8  byte_value;
+    uint16 word_value;
+    uint32 dword_value;
+};
+
+/** Signed integer test */
+struct SignedIntegers {
+    int8   negative_byte;
+    int16  negative_word;
+    int32  negative_dword;
+    int64  negative_qword;
+};
+
+/** Boolean flags test */
+struct BooleanFlags {
+    bool flag1;
+    bool flag2;
+    bool flag3;
+    bool flag4;
+};

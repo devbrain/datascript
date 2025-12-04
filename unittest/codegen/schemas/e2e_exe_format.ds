@@ -1,0 +1,216 @@
+/**
+ * DataScript for Parsing Windows Executable Files (DOS, NE, PE, PE+)
+ *
+ * This script defines the structures for various Windows executable formats.
+ * It starts with the common IMAGE_DOS_HEADER and then uses a labeled union
+ * to parse the specific extended header (NE or PE).
+ */
+
+package com.example.exe_parser;
+
+// Using little-endian byte order for all structures, which is standard for x86.
+little;
+
+// -----------------------------------------------------------------------------
+// Signature Constants
+// -----------------------------------------------------------------------------
+const uint16 DOS_SIGNATURE    = 0x5A4D; // "MZ"
+const uint16 NE_SIGNATURE     = 0x454E; // "NE"
+const uint32 PE_SIGNATURE     = 0x00004550; // "PE\0\0"
+const uint16 PE32_MAGIC       = 0x010b; // For PE32
+const uint16 PE32PLUS_MAGIC   = 0x020b; // For PE32+ (64-bit)
+
+// -----------------------------------------------------------------------------
+// DOS Structures
+// -----------------------------------------------------------------------------
+
+/**
+ * The DOS header, which is the starting point for all supported formats.
+ */
+ImageDosHeader {
+    uint16 e_magic: e_magic == DOS_SIGNATURE; // Magic number, must be "MZ"
+    uint16 e_cblp;      // Bytes on last page of file
+    uint16 e_cp;        // Pages in file
+    uint16 e_crlc;      // Relocations
+    uint16 e_cparhdr;   // Size of header in paragraphs
+    uint16 e_minalloc;  // Minimum extra paragraphs needed
+    uint16 e_maxalloc;  // Maximum extra paragraphs needed
+    uint16 e_ss;        // Initial (relative) SS value
+    uint16 e_sp;        // Initial SP value
+    uint16 e_csum;      // Checksum
+    uint16 e_ip;        // Initial IP value
+    uint16 e_cs;        // Initial (relative) CS value
+    uint16 e_lfarlc;    // File address of relocation table
+    uint16 e_ovno;      // Overlay number
+    uint16 e_res[4];    // Reserved words
+    uint16 e_oemid;     // OEM identifier (for e_oeminfo)
+    uint16 e_oeminfo;   // OEM information; e_oemid specific
+    uint16 e_res2[10];  // Reserved words
+    uint32 e_lfanew;    // File address of new exe header
+};
+
+// -----------------------------------------------------------------------------
+// NE (New Executable) Structures for 16-bit Windows
+// -----------------------------------------------------------------------------
+
+ImageNeHeader {
+    uint16 ne_magic: ne_magic == NE_SIGNATURE; // "NE"
+    uint8  ne_ver;      // Version number
+    uint8  ne_rev;      // Revision number
+    uint16 ne_enttab;   // Offset of Entry Table
+    uint16 ne_cbenttab; // Number of bytes in Entry Table
+    uint32 ne_crc;      // Checksum of whole file
+    uint16 ne_flags;    // Flag word
+    uint16 ne_autodata; // Automatic data segment number
+    uint16 ne_heap;     // Initial heap allocation
+    uint16 ne_stack;    // Initial stack allocation
+    uint32 ne_csip;     // Initial CS:IP setting
+    uint32 ne_sssp;     // Initial SS:SP setting
+    uint16 ne_cseg;     // Count of file segments
+    uint16 ne_cmod;     // Entries in Module Reference Table
+    uint16 ne_cnonres;  // Size of non-resident name table
+    uint16 ne_segtab;   // Offset of Segment Table
+    uint16 ne_rsrctab;  // Offset of Resource Table
+    uint16 ne_restab;   // Offset of resident name table
+    uint16 ne_modtab;   // Offset of Module Reference Table
+    uint16 ne_imptab;   // Offset of Imported Names Table
+    uint32 ne_nrestab;  // Offset of Non-resident Names Table
+    uint16 ne_cmovent;  // Count of movable entries
+    uint16 ne_align;    // Segment alignment shift count
+    uint16 ne_cres;     // Count of resource segments
+    uint8  ne_exetyp;   // Target Operating system
+    uint8  ne_flagsothers; // Other EXE flags
+    uint16 ne_pretthunks; // offset to return thunks
+    uint16 ne_psegrefbytes; // offset to segment ref. bytes
+    uint16 ne_swaparea; // Minimum code swap area size
+    uint16 ne_expver;   // Expected Windows version number
+};
+
+// -----------------------------------------------------------------------------
+// PE (Portable Executable) Structures for 32/64-bit Windows
+// -----------------------------------------------------------------------------
+
+ImageFileHeader {
+    uint16 Machine;
+    uint16 NumberOfSections;
+    uint32 TimeDateStamp;
+    uint32 PointerToSymbolTable;
+    uint32 NumberOfSymbols;
+    uint16 SizeOfOptionalHeader;
+    uint16 Characteristics;
+};
+
+ImageDataDirectory {
+    uint32 VirtualAddress;
+    uint32 Size;
+};
+
+ImageOptionalHeader32 {
+    uint16 Magic: Magic == PE32_MAGIC;
+    uint8  MajorLinkerVersion;
+    uint8  MinorLinkerVersion;
+    uint32 SizeOfCode;
+    uint32 SizeOfInitializedData;
+    uint32 SizeOfUninitializedData;
+    uint32 AddressOfEntryPoint;
+    uint32 BaseOfCode;
+    uint32 BaseOfData;
+    uint32 ImageBase;
+    uint32 SectionAlignment;
+    uint32 FileAlignment;
+    uint16 MajorOperatingSystemVersion;
+    uint16 MinorOperatingSystemVersion;
+    uint16 MajorImageVersion;
+    uint16 MinorImageVersion;
+    uint16 MajorSubsystemVersion;
+    uint16 MinorSubsystemVersion;
+    uint32 Win32VersionValue;
+    uint32 SizeOfImage;
+    uint32 SizeOfHeaders;
+    uint32 CheckSum;
+    uint16 Subsystem;
+    uint16 DllCharacteristics;
+    uint32 SizeOfStackReserve;
+    uint32 SizeOfStackCommit;
+    uint32 SizeOfHeapReserve;
+    uint32 SizeOfHeapCommit;
+    uint32 LoaderFlags;
+    uint32 NumberOfRvaAndSizes;
+    ImageDataDirectory DataDirectory[NumberOfRvaAndSizes];
+};
+
+ImageOptionalHeader64 {
+    uint16 Magic: Magic == PE32PLUS_MAGIC;
+    uint8  MajorLinkerVersion;
+    uint8  MinorLinkerVersion;
+    uint32 SizeOfCode;
+    uint32 SizeOfInitializedData;
+    uint32 SizeOfUninitializedData;
+    uint32 AddressOfEntryPoint;
+    uint32 BaseOfCode;
+    uint64 ImageBase;
+    uint32 SectionAlignment;
+    uint32 FileAlignment;
+    uint16 MajorOperatingSystemVersion;
+    uint16 MinorOperatingSystemVersion;
+    uint16 MajorImageVersion;
+    uint16 MinorImageVersion;
+    uint16 MajorSubsystemVersion;
+    uint16 MinorSubsystemVersion;
+    uint32 Win32VersionValue;
+    uint32 SizeOfImage;
+    uint32 SizeOfHeaders;
+    uint32 CheckSum;
+    uint16 Subsystem;
+    uint16 DllCharacteristics;
+    uint64 SizeOfStackReserve;
+    uint64 SizeOfStackCommit;
+    uint64 SizeOfHeapReserve;
+    uint64 SizeOfHeapCommit;
+    uint32 LoaderFlags;
+    uint32 NumberOfRvaAndSizes;
+    ImageDataDirectory DataDirectory[NumberOfRvaAndSizes];
+};
+
+ImageSectionHeader {
+    uint8  Name[8];
+    uint32 VirtualSize;
+    uint32 VirtualAddress;
+    uint32 SizeOfRawData;
+    uint32 PointerToRawData;
+    uint32 PointerToRelocations;
+    uint32 PointerToLinenumbers;
+    uint16 NumberOfRelocations;
+    uint16 NumberOfLinenumbers;
+    uint32 Characteristics;
+};
+
+// -----------------------------------------------------------------------------
+// Top-Level Executable Structure
+// -----------------------------------------------------------------------------
+
+/**
+ * The main executable file structure. It starts with a DOS header,
+ * then uses the e_lfanew offset to find the next header, which can be
+ * either NE or PE.
+ */
+Executable {
+    ImageDosHeader dos_header;
+
+    dos_header.e_lfanew:
+    union {
+        // Case 1: New Executable (NE) for 16-bit Windows
+        ImageNeHeader ne_header : ne_header.ne_magic == NE_SIGNATURE;
+
+        // Case 2: Portable Executable (PE) for 32/64-bit Windows
+        {
+            uint32 signature: signature == PE_SIGNATURE;
+            ImageFileHeader file_header;
+            union {
+                ImageOptionalHeader32 opt_header_32 : file_header.SizeOfOptionalHeader > 0 && opt_header_32.Magic == PE32_MAGIC;
+                ImageOptionalHeader64 opt_header_64 : file_header.SizeOfOptionalHeader > 0 && opt_header_64.Magic == PE32PLUS_MAGIC;
+            } optional_header;
+            ImageSectionHeader section_headers[file_header.NumberOfSections];
+        } pe_header : signature == PE_SIGNATURE;
+    } extended_header;
+};

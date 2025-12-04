@@ -1,0 +1,6 @@
+package test.main;
+
+import test.foo;
+import test.bar;
+
+const uint8 MAIN_CONST = 42;

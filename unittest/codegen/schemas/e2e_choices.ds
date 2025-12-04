@@ -1,0 +1,40 @@
+/**
+ * End-to-End Test: Choice Types (Tagged Unions)
+ * Tests choice with selector expressions
+ */
+
+/** Message type tags */
+const uint8 MSG_TEXT = 1;
+const uint8 MSG_NUMBER = 2;
+const uint8 MSG_BINARY = 3;
+
+/** Tagged message using choice */
+choice MessagePayload on msg_type {
+    case MSG_TEXT:
+        uint8 text_length;
+    case MSG_NUMBER:
+        uint32 number_value;
+    case MSG_BINARY:
+        uint16 binary_size;
+};
+
+struct Message {
+    uint8 msg_type;
+    MessagePayload payload;
+};
+
+/** Network packet choice */
+const uint8 PACKET_REQUEST = 0x01;
+const uint8 PACKET_RESPONSE = 0x02;
+
+choice PacketPayload on packet_type {
+    case PACKET_REQUEST:
+        uint16 request_id;
+    case PACKET_RESPONSE:
+        uint16 response_code;
+};
+
+struct NetworkPacket {
+    uint8 packet_type;
+    PacketPayload data;
+};

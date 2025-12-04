@@ -1,0 +1,5 @@
+package test.bar;
+
+import test.baz;
+
+const uint32 BAR_CONST = 200;

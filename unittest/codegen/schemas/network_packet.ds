@@ -1,0 +1,76 @@
+/**
+ * Network packet headers - for unittest
+ * Tests realistic binary format parsing
+ */
+
+const uint8 TCP_PROTOCOL = 6;
+const uint8 UDP_PROTOCOL = 17;
+
+const uint8 TCP_FIN = 0x01;
+const uint8 TCP_SYN = 0x02;
+const uint8 TCP_ACK = 0x10;
+
+/** Simple IPv4 header */
+struct IPv4Header {
+    uint8  version_ihl;
+    uint8  tos;
+    uint16 total_length;
+    uint8  ttl;
+    uint8  protocol;
+    uint16 checksum;
+    uint32 source_ip;
+    uint32 dest_ip;
+
+    /** Get IP version */
+    function uint8 version() {
+        return (version_ihl >> 4) & 0x0F;
+    }
+
+    /** Get header length in bytes */
+    function uint8 header_length() {
+        return (version_ihl & 0x0F) * 4;
+    }
+
+    /** Check if TCP */
+    function bool is_tcp() {
+        return protocol == TCP_PROTOCOL;
+    }
+
+    /** Check if UDP */
+    function bool is_udp() {
+        return protocol == UDP_PROTOCOL;
+    }
+};
+
+/** Simple TCP header */
+struct TCPHeader {
+    uint16 source_port;
+    uint16 dest_port;
+    uint32 sequence;
+    uint32 ack_number;
+    uint8  data_offset_flags;
+    uint8  flags;
+    uint16 window;
+    uint16 checksum;
+    uint16 urgent;
+
+    /** Get data offset in bytes */
+    function uint8 header_length() {
+        return ((data_offset_flags >> 4) & 0x0F) * 4;
+    }
+
+    /** Check SYN flag */
+    function bool is_syn() {
+        return (flags & TCP_SYN) != 0;
+    }
+
+    /** Check ACK flag */
+    function bool is_ack() {
+        return (flags & TCP_ACK) != 0;
+    }
+
+    /** Check FIN flag */
+    function bool is_fin() {
+        return (flags & TCP_FIN) != 0;
+    }
+};

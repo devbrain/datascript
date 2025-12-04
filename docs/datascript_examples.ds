@@ -1,0 +1,145 @@
+/**
+ * This file contains a collection of DataScript examples intended for use
+ * in parser testing. It covers a wide range of language features.
+ */
+
+package com.example.parser_tests;
+
+import com.example.common.*;
+
+// -----------------------------------------------------------------------------
+// Constants and Basic Types
+// -----------------------------------------------------------------------------
+const uint32 MAGIC_NUMBER = 0xCAFEBABE;
+const uint8 VERSION = 1;
+
+// A simple sequence of primitive types
+SimpleSequence {
+    uint32 magic_num: magic_num == MAGIC_NUMBER;
+    uint8 version = VERSION;
+    int16 value;
+    big uint64 timestamp; // Explicit byte order
+};
+
+// -----------------------------------------------------------------------------
+// Enumerations and Bitmasks
+// -----------------------------------------------------------------------------
+
+/**
+ * Represents the state of a device.
+ */
+enum bit:4 DeviceState {
+    OFF = 0,
+    STANDBY, // Implicitly 1
+    ACTIVE = 2,
+    ERROR = 15
+};
+
+bitmask uint16 FilePermissions {
+    READ = 0x0001,
+    WRITE = 0x0002,
+    EXECUTE = 0x0004
+};
+
+// -----------------------------------------------------------------------------
+// Compound Types (Union, Choice, Optional)
+// -----------------------------------------------------------------------------
+
+PacketHeader {
+    uint16 packet_length;
+    DeviceState state;
+};
+
+union PacketBody {
+    {
+        uint8 data[16];
+    } data_packet: PacketHeader.state == DeviceState.ACTIVE;
+
+    {
+        uint32 error_code;
+        string error_message;
+    } error_packet: PacketHeader.state == DeviceState.ERROR;
+
+    /* Default case for other states */
+    { } empty_packet;
+};
+
+choice Color(uint8 tag) on tag {
+    case 1: uint8 red;
+    case 2: uint8 green;
+    case 3: uint8 blue;
+    default:
+        // Empty default case
+        ;
+};
+
+// Type with optional members
+ConfigBlock {
+    uint8 flags;
+    uint32 extended_config if (flags & 0x80) != 0;
+    function bool has_extended() {
+        return (flags & 0x80) != 0;
+    }
+};
+
+// -----------------------------------------------------------------------------
+// Arrays and Constraints
+// -----------------------------------------------------------------------------
+constraint is_valid_index(uint16 idx) {
+    idx < 1024;
+}
+
+DataTable {
+    uint16 num_entries;
+    uint32 entries[num_entries] : forall i in entries : is_valid_index(entries[i]);
+    uint8 checksum; // Example of a simple constraint
+};
+
+// Implicit length array
+LogMessages {
+    string messages[]; // Reads until end of stream
+};
+
+// -----------------------------------------------------------------------------
+// Labels, Alignment, and Parameterized Types
+// -----------------------------------------------------------------------------
+
+FileHeader {
+    uint32 data_offset;
+    uint16 num_records;
+};
+
+Record(uint16 record_size) {
+    uint8 data[record_size];
+};
+
+// Main file structure using labels and alignment
+MyFile {
+    FileHeader header;
+
+    header.data_offset:
+    align(8):
+    Record(16) records[header.num_records];
+};
+
+// -----------------------------------------------------------------------------
+// Subtypes
+// -----------------------------------------------------------------------------
+subtype uint16 UserID : this > 0 && this < 65535;
+
+UserRecord {
+    UserID id;
+    string username;
+};
+
+// -----------------------------------------------------------------------------
+// Relational Extensions
+// -----------------------------------------------------------------------------
+sql_table UserTable {
+    int32 user_id sql "PRIMARY KEY";
+    UserRecord user_data;
+};
+
+sql_database MainDatabase {
+    UserTable users;
+};

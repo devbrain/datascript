@@ -1,0 +1,53 @@
+/**
+ * End-to-End Test: Function Calls in Expressions
+ * Tests recursive function calls within function bodies
+ */
+
+/** Function calls test */
+struct Header {
+    uint16 total_length;
+    uint16 header_size;
+
+    /** Get payload length by calling another function */
+    function uint16 get_payload_length() {
+        return total_length - get_header_length();
+    }
+
+    /** Get header length */
+    function uint16 get_header_length() {
+        return header_size;
+    }
+
+    /** Nested function calls */
+    function uint16 double_payload() {
+        return get_payload_length() * 2;
+    }
+
+    /** Function call with argument */
+    function uint16 add_value(uint16 offset) {
+        return get_payload_length() + offset;
+    }
+};
+
+/** Function calls with multiple parameters */
+struct Calculator {
+    uint32 a;
+    uint32 b;
+    uint32 c;
+
+    function uint32 sum() {
+        return a + b + c;
+    }
+
+    function uint32 product() {
+        return multiply(a, b);
+    }
+
+    function uint32 multiply(uint32 x, uint32 y) {
+        return x * y;
+    }
+
+    function uint32 chain_calls() {
+        return multiply(sum(), 2);
+    }
+};

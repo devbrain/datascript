@@ -1,0 +1,46 @@
+/**
+ * End-to-End Test: Arrays
+ * Tests fixed, variable, and ranged arrays
+ */
+
+/** Fixed-size arrays */
+struct FixedArrays {
+    uint8 magic[4];        // Fixed 4-byte magic number
+    uint16 values[3];       // Fixed 3 uint16 values
+    uint8 padding[8];       // Fixed 8-byte padding
+};
+
+/** Variable-size array (length from field) */
+struct VariableArray {
+    uint8 count;            // Number of elements
+    uint16 values[count];   // Variable-size array
+};
+
+/** Multiple variable arrays */
+struct MultipleVariableArrays {
+    uint8 count1;
+    uint8 data1[count1];
+    uint8 count2;
+    uint16 data2[count2];
+};
+
+/** Nested struct with arrays */
+struct Point {
+    uint16 x;
+    uint16 y;
+};
+
+struct PointArray {
+    uint8 num_points;
+    Point points[num_points];
+};
+
+/** Multi-dimensional array (simulated) */
+struct Matrix3x3 {
+    uint32 rows[9];  // 3x3 matrix stored as flat array
+
+    /** Get value at row i, column j */
+    function uint32 get(uint8 i, uint8 j) {
+        return rows[i * 3 + j];
+    }
+};

@@ -1,0 +1,3 @@
+package test.foo;
+
+const uint16 FOO_CONST = 100;

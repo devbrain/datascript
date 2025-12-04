@@ -1,0 +1,242 @@
+/**
+ * End-to-End Test: Complex Expressions
+ * Tests all operators, precedence, and expression types
+ */
+
+/** Binary arithmetic operators */
+struct ArithmeticExpressions {
+    uint8  a;
+    uint8  b;
+    uint16 result;
+
+    /** Addition */
+    function uint16 add() {
+        return a + b;
+    }
+
+    /** Subtraction */
+    function uint16 sub() {
+        return a - b;
+    }
+
+    /** Multiplication */
+    function uint16 mul() {
+        return a * b;
+    }
+
+    /** Division */
+    function uint16 div() {
+        return a / b;
+    }
+
+    /** Modulo */
+    function uint16 mod() {
+        return a % b;
+    }
+
+    /** Complex expression */
+    function uint16 complex() {
+        return (a + b) * 2 - (a / b);
+    }
+};
+
+/** Bitwise operators */
+struct BitwiseExpressions {
+    uint8 value1;
+    uint8 value2;
+
+    /** Bitwise AND */
+    function uint8 bit_and() {
+        return value1 & value2;
+    }
+
+    /** Bitwise OR */
+    function uint8 bit_or() {
+        return value1 | value2;
+    }
+
+    /** Bitwise XOR */
+    function uint8 bit_xor() {
+        return value1 ^ value2;
+    }
+
+    /** Left shift */
+    function uint16 shift_left() {
+        return value1 << value2;
+    }
+
+    /** Right shift */
+    function uint16 shift_right() {
+        return value1 >> value2;
+    }
+
+    /** Bitwise NOT (unary) */
+    function uint8 bit_not() {
+        return ~value1;
+    }
+};
+
+/** Comparison operators */
+struct ComparisonExpressions {
+    int16 a;
+    int16 b;
+
+    /** Equal */
+    function bool eq() {
+        return a == b;
+    }
+
+    /** Not equal */
+    function bool neq() {
+        return a != b;
+    }
+
+    /** Less than */
+    function bool lt() {
+        return a < b;
+    }
+
+    /** Less than or equal */
+    function bool lte() {
+        return a <= b;
+    }
+
+    /** Greater than */
+    function bool gt() {
+        return a > b;
+    }
+
+    /** Greater than or equal */
+    function bool gte() {
+        return a >= b;
+    }
+};
+
+/** Logical operators */
+struct LogicalExpressions {
+    bool flag1;
+    bool flag2;
+
+    /** Logical AND */
+    function bool logic_and() {
+        return flag1 && flag2;
+    }
+
+    /** Logical OR */
+    function bool logic_or() {
+        return flag1 || flag2;
+    }
+
+    /** Logical NOT */
+    function bool logic_not() {
+        return !flag1;
+    }
+};
+
+/** Ternary operator */
+struct TernaryExpressions {
+    uint8 value;
+    uint8 threshold;
+
+    /** Clamp to threshold using ternary */
+    function uint8 clamp() {
+        return value > threshold ? threshold : value;
+    }
+
+    /** Select max */
+    function uint8 max_value() {
+        return value > threshold ? value : threshold;
+    }
+
+    /** Is valid (returns 1 or 0) */
+    function uint8 is_valid() {
+        return value < 100 ? 1 : 0;
+    }
+};
+
+/** Operator precedence test */
+struct PrecedenceTest {
+    uint8 a;
+    uint8 b;
+    uint8 c;
+
+    /** Test: a + b * c (multiplication first) */
+    function uint16 test1() {
+        return a + b * c;
+    }
+
+    /** Test: (a + b) * c (parentheses override) */
+    function uint16 test2() {
+        return (a + b) * c;
+    }
+
+    /** Test: a << b + c (addition before shift) */
+    function uint16 test3() {
+        return a << (b + c);
+    }
+
+    /** Test: a & b | c (bitwise AND before OR) */
+    function uint8 test4() {
+        return (a & b) | c;
+    }
+};
+
+/** Unary operators */
+struct UnaryExpressions {
+    int16 value;
+
+    /** Unary minus */
+    function int16 negate() {
+        return -value;
+    }
+
+    /** Unary plus */
+    function int16 positive() {
+        return +value;
+    }
+
+    /** Absolute value using ternary and unary */
+    function int16 abs() {
+        return value < 0 ? -value : value;
+    }
+};
+
+/** Field access expressions */
+struct Point {
+    uint16 x;
+    uint16 y;
+};
+
+struct FieldAccessExpressions {
+    Point p;
+
+    /** Access nested field */
+    function uint16 get_x() {
+        return p.x;
+    }
+
+    /** Access and compute */
+    function uint32 distance_squared() {
+        return p.x * p.x + p.y * p.y;
+    }
+};
+
+/** Array indexing expressions */
+struct ArrayIndexing {
+    uint8 values[4];
+
+    /** Get first element */
+    function uint8 get_first() {
+        return values[0];
+    }
+
+    /** Get last element */
+    function uint8 get_last() {
+        return values[3];
+    }
+
+    /** Sum all elements */
+    function uint16 sum() {
+        return values[0] + values[1] + values[2] + values[3];
+    }
+};

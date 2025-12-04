@@ -1,0 +1,102 @@
+/**
+ * End-to-End Test: Parameterized Types (Generics)
+ * Tests compile-time type specialization
+ */
+
+/** Generic buffer with capacity parameter */
+struct Buffer(uint16 capacity) {
+    uint8 data[capacity];
+
+    /** Get capacity */
+    function uint16 get_capacity() {
+        return capacity;
+    }
+};
+
+/** Generic fixed-size array */
+struct FixedArray(uint8 size) {
+    uint32 elements[size];
+
+    /** Get size */
+    function uint8 get_size() {
+        return size;
+    }
+
+    /** Get element at index */
+    function uint32 get(uint8 index) {
+        return elements[index];
+    }
+};
+
+/** Matrix with parameterized dimensions */
+struct Matrix(uint8 rows, uint8 cols) {
+    uint32 data[rows * cols];
+
+    /** Get number of rows */
+    function uint8 get_rows() {
+        return rows;
+    }
+
+    /** Get number of columns */
+    function uint8 get_cols() {
+        return cols;
+    }
+
+    /** Get total size */
+    function uint16 get_total_size() {
+        return rows * cols;
+    }
+};
+
+/** Struct using parameterized types */
+struct DataContainer {
+    Buffer(16) small_buffer;    // 16-byte buffer
+    Buffer(256) large_buffer;   // 256-byte buffer
+    Buffer(16) another_small;   // Reuses Buffer_16
+
+    FixedArray(4) quad_array;   // Array of 4 elements
+    FixedArray(8) octet_array;  // Array of 8 elements
+
+    Matrix(3, 3) transform;     // 3x3 matrix
+    Matrix(4, 4) projection;    // 4x4 matrix
+};
+
+/** Nested parameterized types */
+struct Packet(uint16 max_size) {
+    uint16 actual_size;
+    uint8 payload[actual_size];
+};
+
+struct PacketQueue {
+    uint8 count;
+    Packet(64) small_packets;   // Packet with max 64 bytes
+    Packet(512) large_packets;  // Packet with max 512 bytes
+};
+
+/** Generic ring buffer */
+struct RingBuffer(uint8 capacity) {
+    uint8 head;
+    uint8 tail;
+    uint8 buffer[capacity];
+
+    /** Get capacity */
+    function uint8 get_capacity() {
+        return capacity;
+    }
+
+    /** Get used space */
+    function uint8 get_used() {
+        return (tail - head) & (capacity - 1);
+    }
+
+    /** Get free space */
+    function uint8 get_free() {
+        return capacity - get_used();
+    }
+};
+
+struct Communications {
+    RingBuffer(32) tx_buffer;
+    RingBuffer(32) rx_buffer;
+    RingBuffer(64) log_buffer;
+};

@@ -1,0 +1,33 @@
+/**
+ * End-to-End Test: Subtype Usage in Structs
+ * Tests that subtypes generate proper validation code
+ */
+
+/** User ID must be positive */
+subtype uint16 UserID : this > 0;
+
+/** Port number must be above 1024 */
+subtype uint16 Port : this > 1024;
+
+/** Percentage must be 0-100 */
+subtype uint8 Percentage : this <= 100;
+
+/** Simple struct with subtype field */
+struct User {
+    UserID id;
+    uint32 flags;
+};
+
+/** Struct with multiple subtype fields */
+struct Connection {
+    UserID user;
+    Port port;
+    Percentage reliability;
+};
+
+/** Nested subtype usage */
+struct Server {
+    Port listen_port;
+    Percentage cpu_usage;
+    User admin;
+};

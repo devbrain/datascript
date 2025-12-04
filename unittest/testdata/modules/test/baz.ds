@@ -1,0 +1,3 @@
+package test.baz;
+
+const uint64 BAZ_CONST = 300;

@@ -1,0 +1,59 @@
+/**
+ * End-to-End Test: Labels and Alignment
+ * Tests seeking to labeled positions and padding to alignment boundaries
+ */
+
+/** Simple label: seek to data_offset before reading data */
+struct SimpleLabel {
+    uint32 data_offset;
+    data_offset:
+    uint8 data_value;
+};
+
+/** Alignment: pad to 4-byte boundary */
+struct SimpleAlignment {
+    uint8 header;
+    align(4):
+    uint32 aligned_value;
+};
+
+/** Combined label and alignment */
+struct LabelAndAlignment {
+    uint32 data_offset;
+    data_offset:
+    uint8 unaligned_byte;
+    align(8):
+    uint64 aligned_value;
+};
+
+/** Multiple fields with labels */
+struct MultipleLabels {
+    uint32 offset1;
+    uint32 offset2;
+    offset1:
+    uint16 data1;
+    offset2:
+    uint16 data2;
+};
+
+/** Alignment with different boundaries */
+struct MultipleAlignments {
+    uint8 byte1;
+    align(2):
+    uint16 word;
+    align(4):
+    uint32 dword;
+    align(8):
+    uint64 qword;
+};
+
+/** Field access in label */
+struct Header {
+    uint32 data_offset;
+};
+
+struct WithFieldAccessLabel {
+    Header header;
+    header.data_offset:
+    uint32 payload;
+};

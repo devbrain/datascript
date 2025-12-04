@@ -1,0 +1,48 @@
+/**
+ * End-to-End Test: Bit Fields
+ * Tests fixed-width bit field extraction
+ */
+
+/** Simple bit field extraction */
+struct BitFieldBasic {
+    bit:4 nibble1;  // 4 bits
+    bit:4 nibble2;  // 4 bits
+};
+
+/** Flags packed in bits */
+struct BitFlags {
+    bit:1 flag_a;
+    bit:1 flag_b;
+    bit:1 flag_c;
+    bit:1 flag_d;
+    bit:4 reserved;
+};
+
+/** Version encoding in bits */
+struct VersionBits {
+    bit:3 major;     // 3 bits for major (0-7)
+    bit:5 minor;     // 5 bits for minor (0-31)
+
+    /** Get full version as byte */
+    function uint8 get_version() {
+        return (major << 5) | minor;
+    }
+};
+
+/** Complex bit packing */
+struct PackedData {
+    bit:2 type;       // 2 bits: type (0-3)
+    bit:6 length;     // 6 bits: length (0-63)
+    bit:1 compressed; // 1 bit: compression flag
+    bit:7 priority;   // 7 bits: priority (0-127)
+
+    /** Get type value */
+    function uint8 get_type() {
+        return type;
+    }
+
+    /** Check if compressed */
+    function bool is_compressed() {
+        return compressed != 0;
+    }
+};

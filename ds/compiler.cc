@@ -1,0 +1,199 @@
+#include "compiler.hh"
+#include <datascript/base_renderer.hh>
+#include <datascript/ir_builder.hh>
+#include <datascript/parser.hh>
+#include <datascript/parser_error.hh>
+#include <datascript/renderer_registry.hh>
+#include <datascript/semantic.hh>
+#include <fstream>
+#include <iostream>
+
+namespace datascript::driver {
+
+using namespace datascript::codegen;
+
+Compiler::Compiler(const CompilerOptions& options, Logger& logger)
+    : options_(options)
+    , logger_(logger)
+{
+}
+
+int Compiler::compile() {
+    try {
+        logger_.verbose("Starting compilation...");
+
+        // Process each input file
+        for (const auto& input_file : options_.input_files) {
+            logger_.info("Compiling: " + input_file.string());
+
+            // Stage 1 & 2: Load file and imports
+            module_set modules = load_imports(input_file);
+
+            // Stage 3: Semantic analysis
+            semantic::analysis_result analysis_result;
+            if (!run_semantic_analysis(modules, analysis_result)) {
+                return 1;  // Errors occurred
+            }
+
+            // Stage 4: Build IR from analyzed modules
+            ir::bundle bundle = build_ir(analysis_result);
+
+            // Stage 5: Generate code
+            generate_code(bundle);
+        }
+
+        logger_.success("Compilation successful");
+        return 0;
+
+    } catch (const parse_error& e) {
+        logger_.error(std::string("Parse error: ") + e.what());
+        return 1;
+    } catch (const module_load_error& e) {
+        logger_.error(std::string("Module load error: ") + e.what());
+        return 1;
+    } catch (const std::exception& e) {
+        logger_.error(std::string("Error: ") + e.what());
+        return 1;
+    }
+}
+
+// ============================================================================
+// Pipeline Stages
+// ============================================================================
+
+module_set Compiler::load_imports(const std::filesystem::path& main_file) {
+    logger_.verbose("Loading: " + main_file.string());
+
+    // Convert include_dirs to vector of strings
+    std::vector<std::string> search_paths;
+    for (const auto& dir : options_.include_dirs) {
+        search_paths.push_back(dir.string());
+    }
+
+    return load_modules_with_imports(main_file.string(), search_paths);
+}
+
+bool Compiler::run_semantic_analysis(module_set& modules, semantic::analysis_result& out_result) {
+    logger_.verbose("Running semantic analysis...");
+
+    // Build analysis options from compiler options
+    semantic::analysis_options analysis_opts;
+    analysis_opts.warnings_as_errors = options_.warnings_as_errors;
+    analysis_opts.disabled_warnings = options_.disabled_warnings;
+
+    if (options_.suppress_all_warnings) {
+        analysis_opts.min_level = semantic::diagnostic_level::error;
+    }
+
+    // Run 7-phase semantic analysis
+    out_result = semantic::analyze(modules, analysis_opts);
+
+    // Print diagnostics
+    print_diagnostics(out_result);
+
+    // Return true if successful, false if errors
+    return !out_result.has_errors();
+}
+
+ir::bundle Compiler::build_ir(const semantic::analysis_result& result) {
+    logger_.verbose("Building IR...");
+
+    return ir::build_ir(result.analyzed.value());
+}
+
+void Compiler::generate_code(const ir::bundle& bundle) {
+    logger_.verbose("Generating code for language: " + options_.target_language);
+
+    // Get renderer from registry
+    auto& registry = RendererRegistry::instance();
+    auto* renderer = registry.get_renderer(options_.target_language);
+
+    if (!renderer) {
+        auto available = registry.get_available_languages();
+        std::string error_msg = "Renderer not found for language: " + options_.target_language;
+
+        if (!available.empty()) {
+            error_msg += "\n\nAvailable languages:";
+            for (const auto& lang : available) {
+                error_msg += "\n  - " + lang;
+            }
+        }
+
+        throw std::runtime_error(error_msg);
+    }
+
+    // Apply generator-specific options to renderer
+    for (const auto& [option_name, option_value] : options_.generator_options) {
+        renderer->set_option(option_name, option_value);
+    }
+
+    // Determine output directory (use current directory if not specified)
+    std::filesystem::path output_dir = options_.output_dir;
+    if (output_dir.empty()) {
+        output_dir = std::filesystem::current_path();
+    }
+
+    // Generate output files
+    auto output_files = renderer->generate_files(bundle, output_dir);
+
+    logger_.verbose("Generated " + std::to_string(output_files.size()) + " file(s)");
+
+    // Write files to disk
+    write_output_files(output_files);
+}
+
+// ============================================================================
+// Output File Writing
+// ============================================================================
+
+void Compiler::write_output_files(const std::vector<OutputFile>& files) {
+    for (const auto& file : files) {
+        logger_.verbose("Writing: " + file.path.string());
+
+        // Create parent directories if needed
+        auto parent = file.path.parent_path();
+        if (!parent.empty()) {
+            std::filesystem::create_directories(parent);
+        }
+
+        // Write file
+        std::ofstream ofs(file.path);
+        if (!ofs) {
+            throw std::runtime_error("Failed to open file for writing: " + file.path.string());
+        }
+
+        ofs << file.content;
+
+        if (!ofs) {
+            throw std::runtime_error("Failed to write file: " + file.path.string());
+        }
+
+        logger_.success("Generated: " + file.path.string());
+    }
+}
+
+// ============================================================================
+// Utility Methods
+// ============================================================================
+
+void Compiler::print_diagnostics(const semantic::analysis_result& result) {
+    // Print individual diagnostics
+    for (const auto& diag : result.diagnostics) {
+        if (diag.level == semantic::diagnostic_level::error) {
+            logger_.error(diag.message);
+        } else if (diag.level == semantic::diagnostic_level::warning &&
+                   !options_.suppress_all_warnings) {
+            logger_.warning(diag.message);
+        }
+    }
+
+    // Summary
+    if (result.has_errors()) {
+        logger_.error("Total errors: " + std::to_string(result.error_count()));
+    }
+    if (result.has_warnings() && !options_.suppress_all_warnings) {
+        logger_.warning("Total warnings: " + std::to_string(result.warning_count()));
+    }
+}
+
+}  // namespace datascript::driver

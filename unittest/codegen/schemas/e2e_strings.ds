@@ -1,0 +1,36 @@
+/**
+ * End-to-End Test: String Types
+ * Tests null-terminated UTF-8 string reading
+ */
+
+/** Basic string test */
+struct SimpleString {
+    string text;
+};
+
+/** Multiple strings */
+struct MultipleStrings {
+    string first;
+    string second;
+    string third;
+};
+
+/** String mixed with primitives */
+struct MixedData {
+    uint16 count;
+    string name;
+    uint32 value;
+    string description;
+};
+
+/** Empty string test */
+struct EmptyString {
+    string empty;
+    uint8 marker;
+};
+
+/** Array of strings */
+struct StringArray {
+    uint8 count;
+    string items[count];
+};

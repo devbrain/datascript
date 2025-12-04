@@ -1,0 +1,57 @@
+/**
+ * Bit manipulation with functions - for unittest
+ * Tests bitwise operations in functions
+ */
+
+/** Bit flags */
+struct Flags {
+    uint32 bits;
+
+    /** Get bit at position */
+    function uint8 get_bit(uint8 pos) {
+        return (bits >> pos) & 1;
+    }
+
+    /** Get byte at index */
+    function uint8 get_byte(uint8 index) {
+        return (bits >> (index * 8)) & 0xFF;
+    }
+
+    /** Count set bits (simple version) */
+    function uint8 popcount_simple() {
+        return (bits & 1) +
+               ((bits >> 1) & 1) +
+               ((bits >> 2) & 1) +
+               ((bits >> 3) & 1);
+    }
+
+    /** Check if any bits set */
+    function bool has_any_bits() {
+        return bits != 0;
+    }
+
+    /** Check if all bits set in mask */
+    function bool has_all_bits(uint32 mask) {
+        return (bits & mask) == mask;
+    }
+};
+
+/** Version encoding */
+struct Version {
+    uint16 encoded;
+
+    /** Get major version (high 8 bits) */
+    function uint8 major() {
+        return (encoded >> 8) & 0xFF;
+    }
+
+    /** Get minor version (low 8 bits) */
+    function uint8 minor() {
+        return encoded & 0xFF;
+    }
+
+    /** Check if version 1.x */
+    function bool is_v1() {
+        return major() == 1;
+    }
+};
