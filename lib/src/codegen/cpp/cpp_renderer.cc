@@ -908,6 +908,9 @@ void CppRenderer::render_start_choice_case(const StartChoiceCaseCommand& cmd) {
         } else if (in_choice_) {
             ctx_.start_else_if(condition);
         }
+    } else if (in_choice_ && !first_choice_case_) {
+        // Default case (empty case_values) - generate "else" block
+        ctx_.start_else();
     }
 }
 

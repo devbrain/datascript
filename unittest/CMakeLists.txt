@@ -226,6 +226,7 @@ add_executable(datascript_unittest
         codegen/e2e/test_e2e_exe_format.cc
         codegen/test_library_mode_e2e.cc
         codegen/test_choice_discriminator_e2e.cc
+        codegen/test_choice_default_case_bug.cc
         bugreport/test_bugreport_fixes.cc
 )
 

@@ -35,6 +35,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Validates generated C++ code structure and switch statements
 
 ### Fixed
+- **Critical: Choice Default Case Code Generation** (December 8, 2025)
+  - Fixed incorrect C++ code generation for choice types with default cases
+  - **Bug**: Default case code was placed inside the last `if` block instead of an `else` block
+  - **Impact**: Both the regular case and default case would execute sequentially, with default overwriting regular case
+  - **Root Cause**: `render_start_choice_case()` in `cpp_renderer.cc` didn't generate `else` block for default cases (empty `case_values`)
+  - **Fix**: Added proper handling to generate `else` block when `case_values` is empty and not first case
+  - **Example of fix**:
+    - Before (buggy): `if (x == 1) { case1; default; }  // default overwrites case1!`
+    - After (fixed): `if (x == 1) { case1; } else { default; }`
+  - Affects: All choice types with default cases (inline discriminators and external discriminators)
+  - Test coverage: 3 comprehensive test cases with 22 assertions
+  - File: `lib/src/codegen/cpp/cpp_renderer.cc:911-914`
+
 - **Critical: Type Alias Resolution** (December 8, 2025)
   - Fixed type aliases to complex types (struct, union, enum, choice)
   - **Bug**: Aliases were resolved as `uint8_t` instead of target type
