@@ -78,6 +78,18 @@ const ast::subtype_def* symbol_table::find_subtype(const std::string& name) cons
     return nullptr;
 }
 
+const ast::type_alias_def* symbol_table::find_type_alias(const std::string& name) const {
+    if (auto it = main.type_aliases.find(name); it != main.type_aliases.end()) {
+        return it->second;
+    }
+
+    if (auto it = wildcard_type_aliases.find(name); it != wildcard_type_aliases.end()) {
+        return it->second;
+    }
+
+    return nullptr;
+}
+
 const ast::choice_def* symbol_table::find_choice(const std::string& name) const {
     if (auto it = main.choices.find(name); it != main.choices.end()) {
         return it->second;
@@ -220,6 +232,30 @@ const ast::subtype_def* symbol_table::find_subtype_qualified(
 
     auto it = pkg_it->second.subtypes.find(type_name);
     return (it != pkg_it->second.subtypes.end()) ? it->second : nullptr;
+}
+
+const ast::type_alias_def* symbol_table::find_type_alias_qualified(
+    const std::vector<std::string>& qualified_name) const
+{
+    if (qualified_name.empty()) return nullptr;
+
+    const std::string& type_name = qualified_name.back();
+    std::vector<std::string> package_parts(
+        qualified_name.begin(),
+        qualified_name.end() - 1);
+
+    if (package_parts.empty()) {
+        return find_type_alias(type_name);
+    }
+
+    std::string pkg = join(package_parts, ".");
+    auto pkg_it = imported.find(pkg);
+    if (pkg_it == imported.end()) {
+        return nullptr;
+    }
+
+    auto it = pkg_it->second.type_aliases.find(type_name);
+    return (it != pkg_it->second.type_aliases.end()) ? it->second : nullptr;
 }
 
 const ast::choice_def* symbol_table::find_choice_qualified(

@@ -1,5 +1,4 @@
 /** Network Protocol Example - Complete Library Mode Demo */
-package net.protocol;
 
 /** Protocol version */
 const uint8 PROTOCOL_VERSION = 1;

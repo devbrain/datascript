@@ -88,7 +88,12 @@ namespace {
             return analyzed_module_set::resolved_type{def};
         }
 
-        // 5. Try choice
+        // 5. Try type alias
+        if (auto def = symbols.find_type_alias_qualified(qname.parts)) {
+            return analyzed_module_set::resolved_type{def};
+        }
+
+        // 6. Try choice
         if (auto def = symbols.find_choice_qualified(qname.parts)) {
             return analyzed_module_set::resolved_type{def};
         }
@@ -218,6 +223,11 @@ namespace {
             resolve_expr(const_def.value, analyzed.symbols, diags);
         }
 
+        // Resolve target types in type aliases
+        for (const auto& type_alias : mod.type_aliases) {
+            resolve_type(type_alias.target_type, analyzed, diags);
+        }
+
         // Resolve field types and functions in structs
         for (const auto& struct_def : mod.structs) {
             for (const auto& body_item : struct_def.body) {
@@ -303,11 +313,14 @@ namespace {
                     resolve_expr(case_expr, analyzed.symbols, diags);
                 }
 
-                // Resolve field type
-                resolve_type(case_def.field.field_type, analyzed, diags);
+                // Resolve field type (after desugaring, items[0] contains the field_def)
+                if (!case_def.items.empty() && std::holds_alternative<ast::field_def>(case_def.items[0])) {
+                    const auto& field = std::get<ast::field_def>(case_def.items[0]);
+                    resolve_type(field.field_type, analyzed, diags);
 
-                if (case_def.field.condition) {
-                    resolve_expr(case_def.field.condition.value(), analyzed.symbols, diags);
+                    if (field.condition) {
+                        resolve_expr(field.condition.value(), analyzed.symbols, diags);
+                    }
                 }
             }
         }

@@ -4,12 +4,9 @@
  * This script defines the structures for various Windows executable formats.
  * It starts with the common IMAGE_DOS_HEADER and then uses a labeled union
  * to parse the specific extended header (NE or PE).
+ *
+ * Note: All fields are little-endian (x86 standard), unless explicitly marked otherwise.
  */
-
-package com.example.exe_parser;
-
-// Using little-endian byte order for all structures, which is standard for x86.
-little;
 
 // -----------------------------------------------------------------------------
 // Signature Constants

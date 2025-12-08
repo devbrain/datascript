@@ -17,7 +17,7 @@
 #include <vector>
 #include <cstring>
 
-using namespace com::example::exe_parser;
+using namespace generated;
 
 // Helper to create little-endian bytes
 inline void write_le16(std::vector<uint8_t>& data, uint16_t value) {

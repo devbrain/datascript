@@ -86,6 +86,7 @@ scan:
         "enum"      { return TOKEN_ENUM; }
         "bitmask"   { return TOKEN_BITMASK; }
         "subtype"   { return TOKEN_SUBTYPE; }
+        "typedef"   { return TOKEN_TYPEDEF; }
         "function"  { return TOKEN_FUNCTION; }
         "return"    { return TOKEN_RETURN; }
         "if"        { return TOKEN_IF; }

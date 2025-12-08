@@ -162,6 +162,7 @@ add_executable(datascript_unittest
         parser/ast/test_integer_literals.cc
         parser/ast/test_parser_basic.cc
         parser/ast/test_docstrings.cc
+        parser/ast/test_docstring_edges.cc
         parser/ast/test_identifiers_qualified_names.cc
         parser/ast/test_expressions.cc
         parser/ast/test_bit_fields.cc
@@ -224,6 +225,8 @@ add_executable(datascript_unittest
         codegen/e2e/test_e2e_labels_complex.cc
         codegen/e2e/test_e2e_exe_format.cc
         codegen/test_library_mode_e2e.cc
+        codegen/test_choice_discriminator_e2e.cc
+        bugreport/test_bugreport_fixes.cc
 )
 
 # Make unittest depend on generated headers

@@ -218,9 +218,13 @@ namespace {
                 for (const auto& case_expr : case_def.case_exprs) {
                     track_expr_usage(case_expr, analyzed, tracker);
                 }
-                track_type_usage(case_def.field.field_type, analyzed, tracker);
-                if (case_def.field.condition) {
-                    track_expr_usage(case_def.field.condition.value(), analyzed, tracker);
+                // Track field usage (after desugaring, items[0] contains the field_def)
+                if (!case_def.items.empty() && std::holds_alternative<ast::field_def>(case_def.items[0])) {
+                    const auto& field = std::get<ast::field_def>(case_def.items[0]);
+                    track_type_usage(field.field_type, analyzed, tracker);
+                    if (field.condition) {
+                        track_expr_usage(field.condition.value(), analyzed, tracker);
+                    }
                 }
             }
         }

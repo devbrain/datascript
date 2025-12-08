@@ -362,6 +362,26 @@ namespace {
             symbols.subtypes[name] = &subtype_def;
         }
 
+        // Collect type aliases
+        for (const auto& alias_def : mod.type_aliases) {
+            const std::string& name = alias_def.name;
+
+            // Validate identifier against target language keywords
+            validate_identifier(name, alias_def.pos, "Type alias", diags, target_languages);
+
+            if (symbols.type_aliases.contains(name)) {
+                add_error_related(diags,
+                    diag_codes::E_DUPLICATE_DEFINITION,
+                    format_already_defined("Type alias", name),
+                    alias_def.pos,
+                    symbols.type_aliases[name]->pos,
+                    "Previous definition here");
+                continue;
+            }
+
+            symbols.type_aliases[name] = &alias_def;
+        }
+
         // Collect choices
         for (const auto& choice_def : mod.choices) {
             const std::string& name = choice_def.name;
@@ -383,8 +403,11 @@ namespace {
 
             // Validate field names within each choice case
             for (const auto& case_def : choice_def.cases) {
-                // Each case has a single field, validate its name
-                validate_identifier(case_def.field.name, case_def.field.pos, "Field", diags, target_languages);
+                // After desugaring, items[0] contains the field_def, validate its name
+                if (!case_def.items.empty() && std::holds_alternative<ast::field_def>(case_def.items[0])) {
+                    const auto& field = std::get<ast::field_def>(case_def.items[0]);
+                    validate_identifier(field.name, field.pos, "Field", diags, target_languages);
+                }
             }
         }
 
@@ -497,6 +520,21 @@ namespace {
                 }
 
                 symbols.wildcard_subtypes[name] = def;
+            }
+
+            // Type aliases
+            for (const auto& [name, def] : imported_syms.type_aliases) {
+                if (symbols.wildcard_type_aliases.contains(name)) {
+                    add_warning(diags,
+                        diag_codes::W_WILDCARD_CONFLICT,
+                        "Wildcard import of type alias '" + name +
+                        "' conflicts with existing symbol",
+                        import.pos,
+                        "Use qualified name " + pkg_name + "." + name);
+                    continue;
+                }
+
+                symbols.wildcard_type_aliases[name] = def;
             }
 
             // Choices

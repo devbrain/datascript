@@ -114,7 +114,7 @@ void ParseTrace(FILE *TraceFILE, char *zTracePrompt);
 
 /* Define tokens - EOF is handled specially by Lemon as token 0 */
 %token IDENTIFIER INTEGER_LITERAL STRING_LITERAL BOOL_LITERAL DOC_COMMENT.
-%token CONST PACKAGE IMPORT STRUCT UNION CHOICE ENUM BITMASK SUBTYPE CONSTRAINT.
+%token CONST PACKAGE IMPORT STRUCT UNION CHOICE ENUM BITMASK SUBTYPE TYPEDEF CONSTRAINT.
 %token FUNCTION RETURN IF OPTIONAL ON CASE DEFAULT ALIGN LITTLE BIG.
 %token BOOL STRING U16STRING U32STRING BIT.
 %token UINT8 UINT16 UINT32 UINT64 UINT128.
@@ -156,6 +156,7 @@ module_content ::= module_content module_item.
 
 module_item ::= constant_def.
 module_item ::= subtype_def.
+module_item ::= type_alias_def.
 module_item ::= constraint_def.
 module_item ::= package_decl.
 module_item ::= import_decl.
@@ -205,6 +206,11 @@ constant_def ::= optional_docstring(D) CONST type_specifier(T) IDENTIFIER(N) EQU
 /* Subtype Definition */
 subtype_def ::= optional_docstring(D) SUBTYPE type_specifier(T) IDENTIFIER(N) COLON expression(E) SEMICOLON. {
     parser_build_subtype(ctx, T, N, E, D);
+}
+
+/* Type Alias Definition */
+type_alias_def ::= optional_docstring(D) TYPEDEF IDENTIFIER(N) EQUALS type_specifier(T) SEMICOLON. {
+    parser_build_type_alias(ctx, N, T, D);
 }
 
 /* Constraint Definition */
@@ -660,6 +666,18 @@ field_def(R) ::= optional_docstring(D) type_specifier(T) IDENTIFIER(N) LBRACKET 
     R = parser_build_field(ctx, array_type, N, D);
 }
 
+/* Conditional fixed-size array: array[size] if condition; */
+field_def(R) ::= optional_docstring(D) type_specifier(T) IDENTIFIER(N) LBRACKET expression(SIZE) RBRACKET IF expression(COND) SEMICOLON. {
+    ast_type_t* array_type = parser_array_fixed_to_type(parser_build_array_type_fixed(ctx, T, SIZE));
+    R = parser_build_field_with_condition(ctx, array_type, N, COND, D);
+}
+
+/* Optional fixed-size array: array[size] optional condition; */
+field_def(R) ::= optional_docstring(D) type_specifier(T) IDENTIFIER(N) LBRACKET expression(SIZE) RBRACKET OPTIONAL expression(COND) SEMICOLON. {
+    ast_type_t* array_type = parser_array_fixed_to_type(parser_build_array_type_fixed(ctx, T, SIZE));
+    R = parser_build_field_with_condition(ctx, array_type, N, COND, D);
+}
+
 /* Field definitions without docstring (for use in struct_body_item to avoid ambiguity) */
 /* These pass NULL for docstring parameter */
 
@@ -703,6 +721,18 @@ field_def_nodoc(R) ::= type_specifier(T) IDENTIFIER(N) LBRACKET RBRACKET SEMICOL
 field_def_nodoc(R) ::= type_specifier(T) IDENTIFIER(N) LBRACKET expression(E) RBRACKET SEMICOLON. {
     ast_type_t* array_type = parser_array_fixed_to_type(parser_build_array_type_fixed(ctx, T, E));
     R = parser_build_field(ctx, array_type, N, NULL);
+}
+
+/* Conditional fixed-size array - no docstring */
+field_def_nodoc(R) ::= type_specifier(T) IDENTIFIER(N) LBRACKET expression(SIZE) RBRACKET IF expression(COND) SEMICOLON. {
+    ast_type_t* array_type = parser_array_fixed_to_type(parser_build_array_type_fixed(ctx, T, SIZE));
+    R = parser_build_field_with_condition(ctx, array_type, N, COND, NULL);
+}
+
+/* Optional fixed-size array - no docstring */
+field_def_nodoc(R) ::= type_specifier(T) IDENTIFIER(N) LBRACKET expression(SIZE) RBRACKET OPTIONAL expression(COND) SEMICOLON. {
+    ast_type_t* array_type = parser_array_fixed_to_type(parser_build_array_type_fixed(ctx, T, SIZE));
+    R = parser_build_field_with_condition(ctx, array_type, N, COND, NULL);
 }
 
 /* Function definitions */
@@ -826,6 +856,24 @@ choice_case(R) ::= case_clause_list(E) field_def(F). {
 
 choice_case(R) ::= DEFAULT COLON field_def(F). {
     R = parser_build_choice_default(ctx, F);
+}
+
+/* Choice case with inline anonymous block */
+choice_case(R) ::= case_clause_list(E) LBRACE struct_body_list(B) RBRACE IDENTIFIER(N) SEMICOLON. {
+    R = parser_build_choice_case_inline(ctx, E, B, N);
+}
+
+choice_case(R) ::= DEFAULT COLON LBRACE struct_body_list(B) RBRACE IDENTIFIER(N) SEMICOLON. {
+    R = parser_build_choice_default_inline(ctx, B, N);
+}
+
+/* Choice case with empty inline block */
+choice_case(R) ::= case_clause_list(E) LBRACE RBRACE IDENTIFIER(N) SEMICOLON. {
+    R = parser_build_choice_case_inline_empty(ctx, E, N);
+}
+
+choice_case(R) ::= DEFAULT COLON LBRACE RBRACE IDENTIFIER(N) SEMICOLON. {
+    R = parser_build_choice_default_inline_empty(ctx, N);
 }
 
 /* Case clause list - one or more "case expr:" clauses */

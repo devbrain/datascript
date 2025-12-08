@@ -215,6 +215,7 @@ struct module_symbols {
     std::map<std::string, const ast::union_def*> unions;            ///< Union type definitions
     std::map<std::string, const ast::enum_def*> enums;              ///< Enum type definitions
     std::map<std::string, const ast::subtype_def*> subtypes;        ///< Subtype definitions
+    std::map<std::string, const ast::type_alias_def*> type_aliases; ///< Type alias definitions (typedef)
     std::map<std::string, const ast::choice_def*> choices;          ///< Choice (tagged union) definitions
     std::map<std::string, const ast::constraint_def*> constraints;  ///< Named constraint definitions
 
@@ -258,6 +259,7 @@ struct symbol_table {
     std::map<std::string, const ast::union_def*> wildcard_unions;         ///< Unions from wildcard imports
     std::map<std::string, const ast::enum_def*> wildcard_enums;           ///< Enums from wildcard imports
     std::map<std::string, const ast::subtype_def*> wildcard_subtypes;     ///< Subtypes from wildcard imports
+    std::map<std::string, const ast::type_alias_def*> wildcard_type_aliases; ///< Type aliases from wildcard imports
     std::map<std::string, const ast::choice_def*> wildcard_choices;       ///< Choices from wildcard imports
     std::map<std::string, const ast::constant_def*> wildcard_constants;   ///< Constants from wildcard imports
     std::map<std::string, const ast::constraint_def*> wildcard_constraints; ///< Constraints from wildcard imports
@@ -277,6 +279,9 @@ struct symbol_table {
 
     /// Find subtype by simple name.
     [[nodiscard]] const ast::subtype_def* find_subtype(const std::string& name) const;
+
+    /// Find type alias by simple name.
+    [[nodiscard]] const ast::type_alias_def* find_type_alias(const std::string& name) const;
 
     /// Find choice by simple name.
     [[nodiscard]] const ast::choice_def* find_choice(const std::string& name) const;
@@ -306,6 +311,10 @@ struct symbol_table {
 
     /// Find subtype using fully-qualified name parts.
     [[nodiscard]] const ast::subtype_def* find_subtype_qualified(
+        const std::vector<std::string>& qualified_name) const;
+
+    /// Find type alias using fully-qualified name parts.
+    [[nodiscard]] const ast::type_alias_def* find_type_alias_qualified(
         const std::vector<std::string>& qualified_name) const;
 
     /// Find choice using fully-qualified name parts.
@@ -410,6 +419,7 @@ struct analyzed_module_set {
         const ast::union_def*,
         const ast::enum_def*,
         const ast::subtype_def*,
+        const ast::type_alias_def*,
         const ast::choice_def*
     >;
     std::map<const ast::qualified_name*, resolved_type> resolved_types;

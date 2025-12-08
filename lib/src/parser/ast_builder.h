@@ -133,6 +133,7 @@ void parser_free_node(parser_context_t* ctx, void* node);
 /* AST building callbacks - type-safe with specific variant types */
 void parser_build_constant(parser_context_t* ctx, ast_type_t* type, token_value_t* name_tok, ast_expr_t* expr, token_value_t* docstring);
 void parser_build_subtype(parser_context_t* ctx, ast_type_t* base_type, token_value_t* name_tok, ast_expr_t* constraint_expr, token_value_t* docstring);
+void parser_build_type_alias(parser_context_t* ctx, token_value_t* name_tok, ast_type_t* target_type, token_value_t* docstring);
 
 /* Type builders - return specific type-safe pointers */
 ast_primitive_type_t* parser_build_integer_type(parser_context_t* ctx, int is_signed, int bits, int endian);
@@ -230,6 +231,10 @@ ast_expr_list_t* parser_build_expr_list_single(parser_context_t* ctx, ast_expr_t
 ast_expr_list_t* parser_build_expr_list_append(parser_context_t* ctx, ast_expr_list_t* list, ast_expr_t* expr);
 ast_choice_case_t* parser_build_choice_case(parser_context_t* ctx, ast_expr_list_t* case_exprs, ast_field_def_t* field);
 ast_choice_case_t* parser_build_choice_default(parser_context_t* ctx, ast_field_def_t* field);
+ast_choice_case_t* parser_build_choice_case_inline(parser_context_t* ctx, ast_expr_list_t* case_exprs, ast_struct_body_list_t* body, token_value_t* name);
+ast_choice_case_t* parser_build_choice_default_inline(parser_context_t* ctx, ast_struct_body_list_t* body, token_value_t* name);
+ast_choice_case_t* parser_build_choice_case_inline_empty(parser_context_t* ctx, ast_expr_list_t* case_exprs, token_value_t* name);
+ast_choice_case_t* parser_build_choice_default_inline_empty(parser_context_t* ctx, token_value_t* name);
 ast_choice_case_list_t* parser_build_choice_case_list_single(parser_context_t* ctx, ast_choice_case_t* choice_case);
 ast_choice_case_list_t* parser_build_choice_case_list_append(parser_context_t* ctx, ast_choice_case_list_t* list, ast_choice_case_t* choice_case);
 void parser_build_choice(parser_context_t* ctx, token_value_t* name_tok, ast_param_list_t* params, ast_expr_t* selector, ast_choice_case_list_t* cases, token_value_t* docstring);

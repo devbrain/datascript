@@ -952,6 +952,8 @@ struct FileHeader {
 
 ## Packages and Imports
 
+DataScript uses a Java-like package system for organizing code into modules with automatic import resolution and path validation.
+
 ### Package Declaration
 
 Declare package namespace at the top of file:
@@ -966,6 +968,41 @@ package com.example.formats;
 
 - Use reverse-domain notation: `com.example.project`
 - Maps to directory structure: `com/example/project/filename.ds`
+- **Path validation enforced**: File location must match package declaration
+
+**Example:**
+```datascript
+// File: com/example/formats/image.ds
+package com.example.formats.image;  // ✅ Valid: matches file path
+
+// File: formats/image.ds
+package com.example.formats.image;  // ❌ Error: path mismatch
+```
+
+### Package Path Validation
+
+DataScript enforces that file paths match package declarations:
+
+**Rules:**
+1. Package `com.example.foo` must be in file ending with `com/example/foo.ds`
+2. Validation is case-sensitive
+3. Both `/` and `\` path separators are supported (cross-platform)
+4. Checked during module loading for all imports
+
+**Error Handling:**
+
+If paths don't match, you get a helpful error:
+
+```
+Package declaration mismatch:
+  File location: /project/foo.ds
+  Package declared: 'com.example.foo'
+  Expected file location: /project/com/example/foo.ds
+
+Please either:
+  1. Move the file to: /project/com/example/foo.ds
+  2. Change the package declaration to match the file location
+```
 
 ### Import Statements
 
@@ -981,29 +1018,94 @@ import com.example.utils.*;
 
 **Import Resolution:**
 
-1. Main script directory
-2. User-provided search paths
-3. Current working directory
-4. `DATASCRIPT_PATH` environment variable
+The module loader searches for imports in this order:
 
-**Module Loading:**
+1. **Main script directory** (highest priority)
+2. **User-provided search paths** (via command-line `-I` flag)
+3. **Current working directory**
+4. **`DATASCRIPT_PATH` environment variable** (colon-separated paths)
 
-- Circular imports are detected and rejected
-- Modules are loaded once and cached
-- Transitive imports are resolved automatically
+**Import Resolution Example:**
+
+```datascript
+import com.example.utils.helpers;
+```
+
+Searches for: `com/example/utils/helpers.ds` in each search path until found.
+
+**Wildcard Imports:**
+
+```datascript
+import com.example.utils.*;
+```
+
+Loads all `.ds` files in `com/example/utils/` directory (non-recursive).
+
+### Module Loading
+
+**Features:**
+
+- **Transitive imports**: All imports are resolved recursively (BFS traversal)
+- **Deduplication**: Each module loaded only once, even if imported multiple times
+- **Circular import detection**: Prevents infinite loops
+- **Canonical paths**: Uses filesystem canonical paths to avoid duplicate loads
+
+**Module Loading Process:**
+
+1. Parse main script
+2. Build breadth-first queue of imports
+3. For each import:
+   - Resolve to file path
+   - Check if already loaded (by canonical path)
+   - Parse and validate package declaration
+   - Add transitive imports to queue
+4. Return `module_set` with main module and all imported modules
+
+**Error Handling:**
+
+```cpp
+// C++ API
+try {
+    module_set mods = load_modules_with_imports("main.ds", search_paths);
+} catch (const import_not_found_error& e) {
+    // Import couldn't be resolved
+    std::cerr << "Import '" << e.import_name() << "' not found\n";
+    std::cerr << "Searched in:\n";
+    for (const auto& path : e.searched_paths()) {
+        std::cerr << "  - " << path << "\n";
+    }
+} catch (const package_path_mismatch_error& e) {
+    // Package declaration doesn't match file location
+    std::cerr << e.what() << "\n";
+}
+```
 
 ### Complete Example
+
+**Project Structure:**
+```
+myproject/
+├── com/
+│   └── example/
+│       ├── common/
+│       │   └── types.ds
+│       └── formats/
+│           └── shape.ds
+└── main.ds
+```
 
 **File: `com/example/common/types.ds`**
 
 ```datascript
 package com.example.common.types;
 
+/** 2D point */
 struct Point {
     uint16 x;
     uint16 y;
 };
 
+/** Magic number for validation */
 const uint32 MAGIC = 0x12345678;
 ```
 
@@ -1014,6 +1116,7 @@ package com.example.formats.shape;
 
 import com.example.common.types;
 
+/** Rectangle defined by two corners */
 struct Rectangle {
     types.Point top_left;
     types.Point bottom_right;
@@ -1021,6 +1124,43 @@ struct Rectangle {
     uint32 magic : magic == types.MAGIC;
 };
 ```
+
+**File: `main.ds`**
+
+```datascript
+// No package declaration for main file (optional)
+
+import com.example.formats.shape;
+import com.example.common.types;
+
+/** Main data structure */
+struct Drawing {
+    shape.Rectangle bounds;
+    types.Point center;
+};
+```
+
+**Command Line:**
+
+```bash
+# Compile main.ds - automatically loads all imports
+ds main.ds -t cpp -o output/
+
+# With additional search paths
+ds main.ds -t cpp -o output/ -I /path/to/libraries
+
+# Set search path via environment
+export DATASCRIPT_PATH=/usr/local/datascript/lib:/opt/datascript/stdlib
+ds main.ds -t cpp -o output/
+```
+
+### Best Practices
+
+1. **Organize by feature**: Group related types in same package
+2. **Use wildcards sparingly**: Explicit imports are clearer
+3. **Match directory structure**: Keep packages aligned with directories
+4. **Avoid circular dependencies**: Design for acyclic import graphs
+5. **Use meaningful names**: Package names should describe contents
 
 ---
 

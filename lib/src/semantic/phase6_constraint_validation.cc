@@ -263,13 +263,16 @@ namespace {
                 }
             }
 
-            // Validate case field conditions
-            if (case_def.field.condition) {
-                auto literal_val = is_literal_bool(case_def.field.condition.value());
-                if (literal_val.has_value() && !*literal_val) {
-                    add_warning(diags, diag_codes::W_DEPRECATED,
-                        "Choice case field has condition that is always false (field will never be read)",
-                        case_def.field.pos);
+            // Validate case field conditions (after desugaring, items[0] contains the field_def)
+            if (!case_def.items.empty() && std::holds_alternative<ast::field_def>(case_def.items[0])) {
+                const auto& field = std::get<ast::field_def>(case_def.items[0]);
+                if (field.condition) {
+                    auto literal_val = is_literal_bool(field.condition.value());
+                    if (literal_val.has_value() && !*literal_val) {
+                        add_warning(diags, diag_codes::W_DEPRECATED,
+                            "Choice case field has condition that is always false (field will never be read)",
+                            field.pos);
+                    }
                 }
             }
         }

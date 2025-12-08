@@ -20,10 +20,13 @@ TEST_SUITE("Module Loading") {
     }
 
     TEST_CASE("load_modules_with_imports - basic import") {
-        std::string main_path = get_test_data_path() + "/main.ds";
+        std::string main_path = get_test_data_path() + "test/main.ds";
+
+        // Provide base directory as search path for resolving test.* imports
+        std::vector<std::string> search_paths = { get_test_data_path() };
 
         // Should load main.ds and its imports (test.foo, test.bar, test.baz)
-        module_set mods = load_modules_with_imports(main_path);
+        module_set mods = load_modules_with_imports(main_path, search_paths);
 
         // Check main module
         REQUIRE(mods.main.package_name == "test.main");
@@ -54,10 +57,13 @@ TEST_SUITE("Module Loading") {
     }
 
     TEST_CASE("load_modules_with_imports - wildcard import") {
-        std::string wildcard_path = get_test_data_path() + "/wildcard_test.ds";
+        std::string wildcard_path = get_test_data_path() + "test/wildcard.ds";
 
-        // Should load wildcard_test.ds and all .ds files in test/ directory
-        module_set mods = load_modules_with_imports(wildcard_path);
+        // Provide base directory as search path for resolving test.* imports
+        std::vector<std::string> search_paths = { get_test_data_path() };
+
+        // Should load wildcard.ds and all .ds files in test/ directory
+        module_set mods = load_modules_with_imports(wildcard_path, search_paths);
 
         // Check main module
         REQUIRE(mods.main.package_name == "test.wildcard");
@@ -74,9 +80,12 @@ TEST_SUITE("Module Loading") {
     }
 
     TEST_CASE("load_modules_with_imports - deduplication") {
-        std::string main_path = get_test_data_path() + "/main.ds";
+        std::string main_path = get_test_data_path() + "test/main.ds";
 
-        module_set mods = load_modules_with_imports(main_path);
+        // Provide base directory as search path for resolving test.* imports
+        std::vector<std::string> search_paths = { get_test_data_path() };
+
+        module_set mods = load_modules_with_imports(main_path, search_paths);
 
         // test.baz should appear only once, even though it's imported by bar
         // Check that package names are unique
@@ -132,9 +141,12 @@ TEST_SUITE("Module Loading") {
     }
 
     TEST_CASE("load_modules_with_imports - file path resolution") {
-        std::string main_path = get_test_data_path() + "/main.ds";
+        std::string main_path = get_test_data_path() + "test/main.ds";
 
-        module_set mods = load_modules_with_imports(main_path);
+        // Provide base directory as search path for resolving test.* imports
+        std::vector<std::string> search_paths = { get_test_data_path() };
+
+        module_set mods = load_modules_with_imports(main_path, search_paths);
 
         // All file paths should be canonical (absolute)
         CHECK(fs::path(mods.main.file_path).is_absolute());
@@ -145,7 +157,7 @@ TEST_SUITE("Module Loading") {
     }
 
     TEST_CASE("load_modules_with_imports - search paths") {
-        std::string main_path = get_test_data_path() + "/main.ds";
+        std::string main_path = get_test_data_path() + "test/main.ds";
 
         // Test with custom search paths
         std::vector<std::string> search_paths = {

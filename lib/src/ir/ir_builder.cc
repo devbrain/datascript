@@ -1347,6 +1347,11 @@ type_ref build_type_ref(const ast::type& ast_type,
                     result.type_index = 0;  // Fallback
                 }
             }
+            else if (std::holds_alternative<const ast::type_alias_def*>(resolved_it->second)) {
+                // Type alias: recursively resolve to target type
+                auto* alias_ptr = std::get<const ast::type_alias_def*>(resolved_it->second);
+                return build_type_ref(alias_ptr->target_type, analyzed, index_maps, mono_ctx);
+            }
         }
     }
 
@@ -1704,7 +1709,11 @@ choice_def build_choice(const ast::choice_def& ast_choice,
         }
 
         // Build the field for this case
-        case_result.case_field = build_field(ast_case.field, analyzed, index_maps, mono_ctx);
+        // After desugaring, items should contain a single field_def
+        if (!ast_case.items.empty() && std::holds_alternative<ast::field_def>(ast_case.items[0])) {
+            const auto& field_def = std::get<ast::field_def>(ast_case.items[0]);
+            case_result.case_field = build_field(field_def, analyzed, index_maps, mono_ctx);
+        }
 
         result.cases.push_back(std::move(case_result));
     }

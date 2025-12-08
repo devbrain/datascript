@@ -1,0 +1,5 @@
+package test.wildcard;
+
+import test.*;
+
+const uint8 WILDCARD_CONST = 50;

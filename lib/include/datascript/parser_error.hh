@@ -53,4 +53,28 @@ namespace datascript {
         static std::string build_message(const std::string& name,
                                          const std::vector<std::string>& paths);
     };
+
+    class package_path_mismatch_error : public module_load_error {
+    public:
+        package_path_mismatch_error(const std::string& file_path,
+                                   const std::string& package_name,
+                                   const std::string& expected_path)
+            : module_load_error(build_message(file_path, package_name, expected_path)),
+              file_path_(file_path),
+              package_name_(package_name),
+              expected_path_(expected_path) {}
+
+        const std::string& file_path() const { return file_path_; }
+        const std::string& package_name() const { return package_name_; }
+        const std::string& expected_path() const { return expected_path_; }
+
+    private:
+        std::string file_path_;
+        std::string package_name_;
+        std::string expected_path_;
+
+        static std::string build_message(const std::string& file_path,
+                                         const std::string& package_name,
+                                         const std::string& expected_path);
+    };
 }

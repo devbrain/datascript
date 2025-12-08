@@ -376,8 +376,12 @@ namespace {
             // If in choice context, try to resolve field reference
             if (ctx.current_choice) {
                 for (const auto& choice_case : ctx.current_choice->cases) {
-                    if (choice_case.field.name == id->name) {
-                        return categorize_type(choice_case.field.field_type);
+                    // After desugaring, items[0] contains the field_def
+                    if (!choice_case.items.empty() && std::holds_alternative<ast::field_def>(choice_case.items[0])) {
+                        const auto& field = std::get<ast::field_def>(choice_case.items[0]);
+                        if (field.name == id->name) {
+                            return categorize_type(field.field_type);
+                        }
                     }
                 }
             }
@@ -672,13 +676,16 @@ namespace {
                     }
                 }
 
-                // Check case field condition
-                if (case_def.field.condition) {
-                    auto cond_cat = check_expr(case_def.field.condition.value(), analyzed, diags);
-                    if (cond_cat != type_cat::boolean && cond_cat != type_cat::unknown) {
-                        add_error(diags, diag_codes::E_TYPE_MISMATCH,
-                            "Case field condition must be boolean type",
-                            case_def.field.pos);
+                // Check case field condition (after desugaring, items[0] contains the field_def)
+                if (!case_def.items.empty() && std::holds_alternative<ast::field_def>(case_def.items[0])) {
+                    const auto& field = std::get<ast::field_def>(case_def.items[0]);
+                    if (field.condition) {
+                        auto cond_cat = check_expr(field.condition.value(), analyzed, diags);
+                        if (cond_cat != type_cat::boolean && cond_cat != type_cat::unknown) {
+                            add_error(diags, diag_codes::E_TYPE_MISMATCH,
+                                "Case field condition must be boolean type",
+                                field.pos);
+                        }
                     }
                 }
             }
@@ -795,10 +802,13 @@ namespace {
             }
         }
 
-        // Validate choice case field types
+        // Validate choice case field types (after desugaring, items[0] contains the field_def)
         for (const auto& choice_def : mod.choices) {
             for (const auto& case_def : choice_def.cases) {
-                validate_type_ref(case_def.field.field_type, case_def.field.pos);
+                if (!case_def.items.empty() && std::holds_alternative<ast::field_def>(case_def.items[0])) {
+                    const auto& field = std::get<ast::field_def>(case_def.items[0]);
+                    validate_type_ref(field.field_type, field.pos);
+                }
             }
         }
     }

@@ -412,7 +412,9 @@ namespace datascript::ast {
         source_pos pos;
         std::vector<expr> case_exprs;  // Empty for default case
         bool is_default;
-        field_def field;
+        std::vector<struct_body_item> items;  // Items in this case (1 for simple field, N for anonymous block)
+        std::string field_name;               // Name of the field
+        bool is_anonymous_block;              // true if defined as { items... } name;
     };
 
     // Choice definition (tagged union with selector)
@@ -426,6 +428,14 @@ namespace datascript::ast {
         std::optional<std::string> docstring;
     };
 
+    // Type alias definition (typedef)
+    struct type_alias_def {
+        source_pos pos;
+        std::string name;
+        type target_type;
+        std::optional<std::string> docstring;
+    };
+
     struct module {
         std::optional<package_decl> package;  // At most one package declaration
         std::vector<import_decl> imports;
@@ -433,6 +443,7 @@ namespace datascript::ast {
         std::vector<constant_def> constants;
         std::vector<subtype_def> subtypes;
         std::vector<constraint_def> constraints;
+        std::vector<type_alias_def> type_aliases;
         std::vector<enum_def> enums;
         std::vector<struct_def> structs;
         std::vector<union_def> unions;

@@ -27,6 +27,23 @@ std::string import_not_found_error::build_message(
     return oss.str();
 }
 
+// Build error message for package_path_mismatch_error
+std::string package_path_mismatch_error::build_message(
+    const std::string& file_path,
+    const std::string& package_name,
+    const std::string& expected_path) {
+    std::ostringstream oss;
+    oss << "Package declaration mismatch:\n";
+    oss << "  File location: " << file_path << "\n";
+    oss << "  Package declared: '" << package_name << "'\n";
+    oss << "  Expected file location: " << expected_path << "\n";
+    oss << "\nDataScript requires file paths to match package declarations.\n";
+    oss << "Please either:\n";
+    oss << "  1. Move the file to: " << expected_path << "\n";
+    oss << "  2. Change the package declaration to match the file location";
+    return oss.str();
+}
+
 namespace {
     // Helper: Convert package name to file path
     // "foo.bar.baz" -> "foo/bar/baz.ds"
@@ -125,12 +142,64 @@ namespace {
         return results;
     }
 
+    // Helper: Validate that file path matches package declaration
+    void validate_package_path(const std::string& file_path, const std::string& package_name) {
+        if (package_name.empty()) {
+            // No package declaration - no validation needed
+            return;
+        }
+
+        // Convert package name to expected relative path
+        // "foo.bar.baz" -> "foo/bar/baz.ds"
+        std::string package_as_path = package_name;
+        std::replace(package_as_path.begin(), package_as_path.end(), '.', '/');
+        package_as_path += ".ds";
+
+        // Get the file path as a fs::path for manipulation
+        fs::path actual_path(file_path);
+
+        // Extract the relative path that should match the package
+        // We need to check if the file path ends with the expected package path
+        std::string actual_str = actual_path.string();
+
+        // Normalize separators for comparison (handle both / and \)
+        std::replace(actual_str.begin(), actual_str.end(), '\\', '/');
+
+        // Check if the actual path ends with the expected package path
+        if (actual_str.length() >= package_as_path.length()) {
+            std::string ending = actual_str.substr(actual_str.length() - package_as_path.length());
+            if (ending == package_as_path) {
+                // Path matches package declaration
+                return;
+            }
+        }
+
+        // Path doesn't match - construct expected full path for error message
+        // Try to determine the base directory by removing the mismatched ending
+        std::string expected_path;
+        if (actual_path.has_parent_path()) {
+            // Keep parent directories and append correct package path
+            fs::path parent = actual_path.parent_path();
+            // Try to find a reasonable base directory
+            // This is best effort - we show what the path should look like
+            expected_path = (parent / package_as_path).string();
+        } else {
+            expected_path = package_as_path;
+        }
+
+        throw package_path_mismatch_error(file_path, package_name, expected_path);
+    }
+
     // Helper: Parse a single file and return loaded_module
     loaded_module parse_file(const std::string& file_path) {
         loaded_module result;
         result.file_path = file_path;
         result.module = parse_datascript(fs::path(file_path));
         result.package_name = get_package_name(result.module);
+
+        // Validate that file path matches package declaration
+        validate_package_path(file_path, result.package_name);
+
         return result;
     }
 
@@ -248,9 +317,10 @@ module_set load_modules_with_imports(
                 loaded_module imported = parse_file(file_path);
                 seen_files.insert(file_path);
 
-                // Add to package index
-                std::string pkg_name = package_to_string(import.name_parts);
-                result.package_index[pkg_name] = result.imported.size();
+                // Add to package index if it has a package name
+                if (!imported.package_name.empty()) {
+                    result.package_index[imported.package_name] = result.imported.size();
+                }
 
                 result.imported.push_back(std::move(imported));
                 to_process.push(result.imported.size() - 1);  // Push index, not pointer

@@ -489,6 +489,34 @@ void parser_build_subtype(parser_context_t* ctx, ast_type_t* base_type, token_va
     }
 }
 
+void parser_build_type_alias(parser_context_t* ctx, token_value_t* name_tok, ast_type_t* target_type,
+                             token_value_t* docstring) {
+    if (!ctx || !ctx->ast_builder || !name_tok || !target_type) {
+        return;
+    }
+
+    try {
+        /* Cast opaque pointers back to C++ types */
+        auto* type_ptr = reinterpret_cast <datascript::ast::type*>(target_type);
+
+        /* Extract name from token */
+        std::string name = extract_string(name_tok);
+
+        /* Create type alias definition */
+        type_alias_def alias{
+            make_pos(ctx),
+            name,
+            std::move(*type_ptr),
+            process_docstring(docstring)
+        };
+
+        /* Add to module */
+        ctx->ast_builder->module->type_aliases.push_back(std::move(alias));
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build type alias: %s", e.what());
+    }
+}
+
 ast_primitive_type_t* parser_build_integer_type(parser_context_t* ctx, int is_signed, int bits, int endian) {
     if (!ctx || !ctx->ast_builder) {
         return nullptr;
@@ -2193,12 +2221,19 @@ parser_build_choice_case(parser_context_t* ctx, ast_expr_list_t* case_exprs, ast
         /* Get field from temp storage */
         auto* field_def_ptr = reinterpret_cast <field_def*>(field);
 
+        /* Extract field name and wrap field in items vector */
+        std::string fname = field_def_ptr->name;
+        std::vector<struct_body_item> items;
+        items.push_back(std::move(*field_def_ptr));
+
         /* Create choice case in temp storage */
         ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
             make_pos(ctx),
             std::move(exprs),
             false, // not default
-            std::move(*field_def_ptr)
+            std::move(items),
+            std::move(fname),
+            false // not anonymous block
         });
 
         return reinterpret_cast <ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
@@ -2218,17 +2253,182 @@ ast_choice_case_t* parser_build_choice_default(parser_context_t* ctx, ast_field_
         /* Get field from temp storage */
         auto* field_def_ptr = reinterpret_cast <field_def*>(field);
 
+        /* Extract field name and wrap field in items vector */
+        std::string fname = field_def_ptr->name;
+        std::vector<struct_body_item> items;
+        items.push_back(std::move(*field_def_ptr));
+
         /* Create default choice case in temp storage */
         ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
             make_pos(ctx),
             {}, // empty case_exprs
             true, // is default
-            std::move(*field_def_ptr)
+            std::move(items),
+            std::move(fname),
+            false // not anonymous block
         });
 
         return reinterpret_cast <ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
     } catch (const std::exception& e) {
         parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build default choice case: %s", e.what());
+        return nullptr;
+    }
+}
+
+ast_choice_case_t* parser_build_choice_case_inline(parser_context_t* ctx, ast_expr_list_t* case_exprs,
+                                                    ast_struct_body_list_t* body, token_value_t* name) {
+    // RAII guards ensure automatic cleanup on all paths
+    datascript::parser::expr_list_guard expr_guard(reinterpret_cast<expr_list_holder*>(case_exprs));
+    datascript::parser::struct_body_list_guard body_guard(reinterpret_cast<struct_body_list_holder*>(body));
+
+    if (!ctx || !ctx->ast_builder || !expr_guard || !name) {
+        return nullptr;
+    }
+
+    try {
+        using namespace datascript::ast;
+
+        /* Extract expressions from list */
+        std::vector<expr> exprs;
+        exprs.reserve(expr_guard->exprs.size());
+
+        for (auto* expr_ptr : expr_guard->exprs) {
+            auto* e = reinterpret_cast<expr*>(expr_ptr);
+            exprs.push_back(std::move(*e));
+        }
+
+        /* Extract field name from token */
+        std::string fname = extract_string(name);
+
+        /* Extract body items from list */
+        std::vector<struct_body_item> items;
+        if (body_guard) {
+            items = std::move(body_guard->items);
+        }
+
+        /* Create choice case with inline block in temp storage */
+        ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
+            make_pos(ctx),
+            std::move(exprs),
+            false, // not default
+            std::move(items),
+            std::move(fname),
+            true // anonymous block
+        });
+
+        return reinterpret_cast<ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build inline choice case: %s", e.what());
+        return nullptr;
+    }
+    // Guards automatically delete on scope exit
+}
+
+ast_choice_case_t* parser_build_choice_default_inline(parser_context_t* ctx, ast_struct_body_list_t* body,
+                                                       token_value_t* name) {
+    // RAII guard ensures automatic cleanup on all paths
+    datascript::parser::struct_body_list_guard body_guard(reinterpret_cast<struct_body_list_holder*>(body));
+
+    if (!ctx || !ctx->ast_builder || !name) {
+        return nullptr;
+    }
+
+    try {
+        using namespace datascript::ast;
+
+        /* Extract field name from token */
+        std::string fname = extract_string(name);
+
+        /* Extract body items from list */
+        std::vector<struct_body_item> items;
+        if (body_guard) {
+            items = std::move(body_guard->items);
+        }
+
+        /* Create default choice case with inline block in temp storage */
+        ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
+            make_pos(ctx),
+            {}, // empty case_exprs
+            true, // is default
+            std::move(items),
+            std::move(fname),
+            true // anonymous block
+        });
+
+        return reinterpret_cast<ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build inline default choice case: %s", e.what());
+        return nullptr;
+    }
+    // Guard automatically deletes on scope exit
+}
+
+ast_choice_case_t* parser_build_choice_case_inline_empty(parser_context_t* ctx, ast_expr_list_t* case_exprs,
+                                                          token_value_t* name) {
+    // RAII guard ensures automatic cleanup on all paths
+    datascript::parser::expr_list_guard expr_guard(reinterpret_cast<expr_list_holder*>(case_exprs));
+
+    if (!ctx || !ctx->ast_builder || !expr_guard || !name) {
+        return nullptr;
+    }
+
+    try {
+        using namespace datascript::ast;
+
+        /* Extract expressions from list */
+        std::vector<expr> exprs;
+        exprs.reserve(expr_guard->exprs.size());
+
+        for (auto* expr_ptr : expr_guard->exprs) {
+            auto* e = reinterpret_cast<expr*>(expr_ptr);
+            exprs.push_back(std::move(*e));
+        }
+
+        /* Extract field name from token */
+        std::string fname = extract_string(name);
+
+        /* Create choice case with empty inline block in temp storage */
+        ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
+            make_pos(ctx),
+            std::move(exprs),
+            false, // not default
+            {}, // empty items
+            std::move(fname),
+            true // anonymous block (even though empty)
+        });
+
+        return reinterpret_cast<ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build empty inline choice case: %s", e.what());
+        return nullptr;
+    }
+    // Guard automatically deletes on scope exit
+}
+
+ast_choice_case_t* parser_build_choice_default_inline_empty(parser_context_t* ctx, token_value_t* name) {
+    if (!ctx || !ctx->ast_builder || !name) {
+        return nullptr;
+    }
+
+    try {
+        using namespace datascript::ast;
+
+        /* Extract field name from token */
+        std::string fname = extract_string(name);
+
+        /* Create default choice case with empty inline block in temp storage */
+        ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
+            make_pos(ctx),
+            {}, // empty case_exprs
+            true, // is default
+            {}, // empty items
+            std::move(fname),
+            true // anonymous block (even though empty)
+        });
+
+        return reinterpret_cast<ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build empty inline default choice case: %s", e.what());
         return nullptr;
     }
 }

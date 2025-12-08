@@ -207,6 +207,54 @@ namespace {
         }
     }
 
+    // Desugar inline anonymous blocks in a single choice
+    void desugar_choice(ast::choice_def& choice_def, ast::module& module) {
+        using namespace ast;
+
+        for (auto& choice_case : choice_def.cases) {
+            // Only desugar if this is an anonymous block
+            if (choice_case.is_anonymous_block && !choice_case.items.empty()) {
+                // Generate unique type name for this case
+                std::string case_suffix = choice_case.is_default ? "default" : "case";
+                std::string type_name = generate_inline_type_name(choice_def.name, choice_case.field_name + "_" + case_suffix);
+
+                // Create struct_def from inline block (move data)
+                struct_def generated_struct{
+                    choice_case.pos,
+                    type_name,
+                    {},  // No parameters for generated types
+                    std::move(choice_case.items),  // Move body items
+                    std::nullopt  // No docstring for generated types
+                };
+
+                // Add generated struct to module
+                module.structs.push_back(std::move(generated_struct));
+
+                // Create qualified name for the generated type
+                qualified_name type_ref{
+                    choice_case.pos,
+                    {type_name}
+                };
+
+                // Create a field_def using the generated type
+                field_def replacement{
+                    choice_case.pos,
+                    type{type_node{std::move(type_ref)}},
+                    choice_case.field_name,
+                    std::nullopt,  // No condition (condition is in the choice case, not the field)
+                    std::nullopt,  // No constraint
+                    std::nullopt,  // No default value
+                    std::nullopt   // No docstring
+                };
+
+                // Replace items with a single field_def
+                choice_case.items.clear();
+                choice_case.items.push_back(std::move(replacement));
+                choice_case.is_anonymous_block = false;  // No longer an anonymous block
+            }
+        }
+    }
+
     // Desugar inline types in a single module
     void desugar_module(ast::module& module) {
         // Process all structs
@@ -219,7 +267,10 @@ namespace {
             desugar_union(union_def, module);
         }
 
-        // Note: Choices don't support inline types (not in spec)
+        // Process all choices (for inline anonymous blocks in cases)
+        for (auto& choice_def : module.choices) {
+            desugar_choice(choice_def, module);
+        }
     }
 
 } // anonymous namespace
