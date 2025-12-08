@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Inline Anonymous Structs for Choice Cases** (December 8, 2025)
+  - Choice cases can now use inline struct syntax like unions
+  - Syntax: `case 0xFFFF: { uint16 marker; uint16 ordinal; } data;`
+  - Eliminates need for separate named structs
+  - Desugared at Phase 0 into generated struct types
+  - Consistent with union inline struct syntax
+  - Full integration across parser, AST, semantic analysis, IR, and codegen
+  - Zero runtime overhead (same as hand-written code)
+  - Comprehensive tests (5 new parser tests, 45 assertions)
+
+- **Package Path Validation** (December 8, 2025)
+  - Java-like package system enforcement: file paths must match package declarations
+  - Example: `package test.foo;` requires file at `.../test/foo.ds`
+  - New `package_path_mismatch_error` exception with helpful error messages
+  - Shows actual location, expected location, and fix suggestions
+  - Automatic validation during module loading for all imports
+  - Cross-platform path handling (both `/` and `\` separators)
+  - Prevents module resolution errors and ensures predictable structure
+
+- **E2E Tests for Choice Discriminators** (December 8, 2025)
+  - Comprehensive test suite for discriminator behavior
+  - 12 test cases covering inline/external discriminators, all integer types
+  - Verifies correct discriminator reading and case selection
+  - Tests nested choices, big-endian discriminators, optional choices
+  - Validates generated C++ code structure and switch statements
+
+### Fixed
+- **Critical: Type Alias Resolution** (December 8, 2025)
+  - Fixed type aliases to complex types (struct, union, enum, choice)
+  - **Bug**: Aliases were resolved as `uint8_t` instead of target type
+  - **Root Cause**: Phase 2 name resolution wasn't resolving qualified names in typedefs
+  - **Fix**: Added `resolve_type()` call for all type alias target types
+  - Affects: typedef to struct/union/enum/choice/subtype (all now work correctly)
+  - Backward compatible: previously broken code now works
+  - Test coverage: New IR generation test with 8 assertions
+
 ### Changed
 - **BREAKING: Explicit Discriminator Type Required for Inline Choices** (December 8, 2025)
   - Inline discriminator choices now require explicit type declaration
