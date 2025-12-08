@@ -74,6 +74,8 @@ void ParseTrace(FILE *TraceFILE, char *zTracePrompt);
 %type primitive_type {ast_type_t*}
 %type integer_type {ast_primitive_type_t*}
 %type string_type {ast_string_type_t*}
+%type u16_string_type {ast_u16_string_type_t*}
+%type u32_string_type {ast_u32_string_type_t*}
 %type bool_type {ast_bool_type_t*}
 %type bit_field_type {ast_bitfield_type_t*}
 %type qualified_name {ast_qualified_name_t*}
@@ -113,8 +115,8 @@ void ParseTrace(FILE *TraceFILE, char *zTracePrompt);
 /* Define tokens - EOF is handled specially by Lemon as token 0 */
 %token IDENTIFIER INTEGER_LITERAL STRING_LITERAL BOOL_LITERAL DOC_COMMENT.
 %token CONST PACKAGE IMPORT STRUCT UNION CHOICE ENUM BITMASK SUBTYPE CONSTRAINT.
-%token FUNCTION RETURN IF ON CASE DEFAULT ALIGN LITTLE BIG.
-%token BOOL STRING BIT.
+%token FUNCTION RETURN IF OPTIONAL ON CASE DEFAULT ALIGN LITTLE BIG.
+%token BOOL STRING U16STRING U32STRING BIT.
 %token UINT8 UINT16 UINT32 UINT64 UINT128.
 %token INT8 INT16 INT32 INT64 INT128.
 %token SEMICOLON COMMA DOT DOTDOT COLON EQUALS.
@@ -244,6 +246,8 @@ type_specifier(R) ::= array_type(A). { R = A; }
 /* Base type specifiers (non-array types) */
 base_type_specifier(R) ::= primitive_type(T). { R = T; }
 base_type_specifier(R) ::= string_type(T). { R = parser_string_to_type(T); }
+base_type_specifier(R) ::= u16_string_type(T). { R = parser_u16_string_to_type(T); }
+base_type_specifier(R) ::= u32_string_type(T). { R = parser_u32_string_to_type(T); }
 base_type_specifier(R) ::= bool_type(T). { R = parser_bool_to_type(T); }
 base_type_specifier(R) ::= bit_field_type(T). { R = parser_bitfield_to_type(T); }
 base_type_specifier(R) ::= qualified_name(Q). { R = parser_qualified_name_to_type(Q); }
@@ -292,6 +296,28 @@ integer_type(R) ::= INT128. {
 /* String and Boolean Types */
 string_type(R) ::= STRING. {
     R = parser_build_string_type(ctx);
+}
+
+/* UTF-16 String Type with optional endianness */
+u16_string_type(R) ::= U16STRING. {
+    R = parser_build_u16_string_type(ctx, 0);  /* 0 = unspec */
+}
+u16_string_type(R) ::= LITTLE U16STRING. {
+    R = parser_build_u16_string_type(ctx, 1);  /* 1 = little */
+}
+u16_string_type(R) ::= BIG U16STRING. {
+    R = parser_build_u16_string_type(ctx, 2);  /* 2 = big */
+}
+
+/* UTF-32 String Type with optional endianness */
+u32_string_type(R) ::= U32STRING. {
+    R = parser_build_u32_string_type(ctx, 0);  /* 0 = unspec */
+}
+u32_string_type(R) ::= LITTLE U32STRING. {
+    R = parser_build_u32_string_type(ctx, 1);  /* 1 = little */
+}
+u32_string_type(R) ::= BIG U32STRING. {
+    R = parser_build_u32_string_type(ctx, 2);  /* 2 = big */
 }
 
 bool_type(R) ::= BOOL. {
@@ -617,6 +643,11 @@ field_def(R) ::= optional_docstring(D) type_specifier(T) IDENTIFIER(N) IF expres
     R = parser_build_field_with_condition(ctx, T, N, E, D);
 }
 
+/* Optional field syntax sugar: field optional expr; (desugars to if) */
+field_def(R) ::= optional_docstring(D) type_specifier(T) IDENTIFIER(N) OPTIONAL expression(E) SEMICOLON. {
+    R = parser_build_field_with_condition(ctx, T, N, E, D);
+}
+
 /* Unsized array fields */
 field_def(R) ::= optional_docstring(D) type_specifier(T) IDENTIFIER(N) LBRACKET RBRACKET SEMICOLON. {
     ast_type_t* array_type = parser_array_unsized_to_type(parser_build_array_type_unsized(ctx, T));
@@ -654,6 +685,11 @@ field_def_nodoc(R) ::= type_specifier(T) IDENTIFIER(N) COLON expression(C) EQUAL
 
 /* Field with if condition - no docstring */
 field_def_nodoc(R) ::= type_specifier(T) IDENTIFIER(N) IF expression(E) SEMICOLON. {
+    R = parser_build_field_with_condition(ctx, T, N, E, NULL);
+}
+
+/* Optional field syntax sugar - no docstring */
+field_def_nodoc(R) ::= type_specifier(T) IDENTIFIER(N) OPTIONAL expression(E) SEMICOLON. {
     R = parser_build_field_with_condition(ctx, T, N, E, NULL);
 }
 
@@ -763,6 +799,15 @@ choice_def ::= optional_docstring(D) CHOICE IDENTIFIER(N) ON expression(S) LBRAC
 
 choice_def ::= optional_docstring(D) CHOICE IDENTIFIER(N) param_list(P) ON expression(S) LBRACE choice_case_list(C) RBRACE SEMICOLON. {
     parser_build_choice(ctx, N, P, S, C, D);
+}
+
+/* Choice with inline discriminator (requires explicit type) */
+choice_def ::= optional_docstring(D) CHOICE IDENTIFIER(N) COLON type_specifier(T) LBRACE choice_case_list(C) RBRACE SEMICOLON. {
+    parser_build_choice_inline(ctx, N, NULL, T, C, D);
+}
+
+choice_def ::= optional_docstring(D) CHOICE IDENTIFIER(N) param_list(P) COLON type_specifier(T) LBRACE choice_case_list(C) RBRACE SEMICOLON. {
+    parser_build_choice_inline(ctx, N, P, T, C, D);
 }
 
 /* Choice case list - one or more cases */

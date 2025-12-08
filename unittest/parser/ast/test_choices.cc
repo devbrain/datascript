@@ -123,7 +123,8 @@ TEST_SUITE("Parser - Choice Definitions") {
         CHECK(mod.choices[0].name == "Packet");
 
         // Check selector is a binary expression
-        auto* bin_expr = std::get_if<datascript::ast::binary_expr>(&mod.choices[0].selector.node);
+        REQUIRE(mod.choices[0].selector.has_value());
+        auto* bin_expr = std::get_if<datascript::ast::binary_expr>(&mod.choices[0].selector.value().node);
         REQUIRE(bin_expr != nullptr);
         CHECK(bin_expr->op == datascript::ast::binary_op::bit_and);
     }

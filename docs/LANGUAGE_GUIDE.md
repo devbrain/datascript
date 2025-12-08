@@ -124,7 +124,11 @@ struct AllIntegers {
 };
 ```
 
-### String Type
+### String Types
+
+DataScript supports three string types for different Unicode encodings:
+
+#### UTF-8 Strings (`string`)
 
 The `string` type represents null-terminated UTF-8 strings:
 
@@ -137,6 +141,38 @@ struct Message {
 ```
 
 **Binary Format:** Strings are read until a null byte (`0x00`) is encountered.
+
+#### UTF-16 Strings (`u16string`)
+
+The `u16string` type represents null-terminated UTF-16 strings with optional endianness:
+
+```datascript
+struct UnicodeText {
+    u16string default_text;           // Default (little-endian)
+    little u16string le_text;         // Explicit little-endian
+    big u16string be_text;            // Big-endian
+};
+```
+
+**Binary Format:** UTF-16 code units are read until a null code unit (`0x0000`) is encountered.
+- Each code unit is 2 bytes
+- Endianness can be specified (defaults to little-endian)
+
+#### UTF-32 Strings (`u32string`)
+
+The `u32string` type represents null-terminated UTF-32 strings with optional endianness:
+
+```datascript
+struct WideText {
+    u32string default_text;           // Default (little-endian)
+    little u32string le_text;         // Explicit little-endian
+    big u32string be_text;            // Big-endian
+};
+```
+
+**Binary Format:** UTF-32 code points are read until a null code point (`0x00000000`) is encountered.
+- Each code point is 4 bytes
+- Endianness can be specified (defaults to little-endian)
 
 ### Boolean Type
 
@@ -360,6 +396,51 @@ struct Message {
 - **Choice**: Selector determines which branch at compile time (efficient switch statement)
 - **Union**: Try each branch at runtime until one succeeds (flexible but slower)
 
+#### Inline Discriminator Choices
+
+Choices can also read and test their own discriminator from the input stream, without requiring an external selector field. This is useful for formats where the type is determined by inspecting the first few bytes:
+
+```datascript
+// Windows resource identifier: 0xFFFF marker indicates ordinal vs. name
+choice ResourceIdentifier : uint16 {
+    case 0xFFFF:
+        uint16 marker;     // Consume the 0xFFFF
+        uint16 ordinal;    // Ordinal resource ID
+    default:
+        u16string name;    // Named resource (null-terminated UTF-16)
+}
+
+struct ResourceDirectory {
+    uint16 entry_count;
+    ResourceIdentifier entries[entry_count];  // Each entry auto-detects its type
+}
+```
+
+**How it works:**
+
+1. You explicitly declare the discriminator type (e.g., `: uint16`, `: uint32`)
+2. The generated code **peeks** at the first bytes without consuming them
+3. Tests the peeked value against case expressions
+4. Consumes bytes for the matching case
+5. All case values are validated to fit within the declared type's range
+
+**Example with larger discriminator:**
+
+```datascript
+choice FileFormat : uint32 {
+    case 0x89504E47:  // PNG magic bytes
+        uint32 magic;
+        // ... PNG header fields
+    case 0xFFD8FFE0:  // JPEG magic bytes
+        uint32 magic;
+        // ... JPEG header fields
+    default:
+        uint8 unknown_format;
+}
+```
+
+The discriminator type is explicitly declared as `uint32` to accommodate case values that exceed 65535.
+
 ### Subtypes
 
 Subtypes are constrained base types that validate values:
@@ -537,7 +618,7 @@ struct Header {
 
 ### Conditional Fields
 
-Fields can be conditionally present using `if`:
+Fields can be conditionally present using `if` or `optional` (both are equivalent):
 
 ```datascript
 struct OptionalData {
@@ -553,6 +634,20 @@ struct VersionedData {
 };
 ```
 
+**Alternative Syntax:** The `optional` keyword is syntactic sugar for `if`:
+
+```datascript
+struct DialogTemplate {
+    uint8 style;
+
+    // These two syntaxes are equivalent:
+    uint16 point_size optional (style & 0x01) != 0;  // Using 'optional'
+    uint32 weight if (style & 0x02) != 0;            // Using 'if'
+};
+```
+
+Both syntaxes generate identical code. Use whichever is clearer for your use case.
+
 **Behavior:** If condition is false, field is skipped during parsing.
 
 ### Constraint vs Condition
@@ -560,7 +655,7 @@ struct VersionedData {
 | Feature | Syntax | Purpose | Failure Behavior |
 |---------|--------|---------|------------------|
 | **Constraint** | `field : expr` | Validate value | Throw error |
-| **Condition** | `field if expr` | Optional presence | Skip field |
+| **Condition** | `field if expr` or `field optional expr` | Optional presence | Skip field |
 
 ---
 
@@ -770,7 +865,23 @@ struct MixedArray {
 };
 ```
 
-**Note:** Endianness only applies to multi-byte integers (uint16, uint32, uint64, int16, int32, int64).
+### Endianness with Unicode Strings
+
+UTF-16 and UTF-32 strings also support endianness modifiers:
+
+```datascript
+struct UnicodeData {
+    little u16string utf16_le;  // UTF-16 little-endian
+    big u16string utf16_be;     // UTF-16 big-endian
+    little u32string utf32_le;  // UTF-32 little-endian
+    big u32string utf32_be;     // UTF-32 big-endian
+};
+```
+
+**Note:** Endianness applies to:
+- Multi-byte integers: `uint16`, `uint32`, `uint64`, `int16`, `int32`, `int64`
+- Unicode strings: `u16string` (2 bytes per code unit), `u32string` (4 bytes per code point)
+- UTF-8 `string` type does not use endianness (single-byte encoding)
 
 ---
 

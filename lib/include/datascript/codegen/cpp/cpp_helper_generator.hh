@@ -42,8 +42,9 @@ public:
      * Output order:
      * 1. Exception classes (if exceptions enabled)
      * 2. Binary reading helpers (always)
-     * 3. String reading helpers (mode-dependent)
-     * 4. ReadResult template (if safe mode enabled)
+     * 3. Peek helpers (non-consuming reads, always)
+     * 4. String reading helpers (mode-dependent)
+     * 5. ReadResult template (if safe mode enabled)
      */
     void generate_all();
 
@@ -54,6 +55,7 @@ private:
     // Generation methods for each section
     void generate_exception_classes();
     void generate_binary_readers();
+    void generate_peek_helpers();
     void generate_string_readers();
 };
 

@@ -433,7 +433,8 @@ TEST_SUITE("Parser - Function Call Expressions") {
         REQUIRE(mod.choices.size() == 1);
 
         // Selector should be function call
-        auto* func_call = std::get_if<datascript::ast::function_call_expr>(&mod.choices[0].selector.node);
+        REQUIRE(mod.choices[0].selector.has_value());
+        auto* func_call = std::get_if<datascript::ast::function_call_expr>(&mod.choices[0].selector.value().node);
         REQUIRE(func_call != nullptr);
 
         auto* func_id = std::get_if<datascript::ast::identifier>(&func_call->function->node);

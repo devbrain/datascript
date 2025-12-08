@@ -207,7 +207,8 @@ TEST_SUITE("Parser - Field Access Expressions") {
         REQUIRE(mod.choices.size() == 1);
 
         // Selector should be field access
-        auto* field_access = std::get_if<datascript::ast::field_access_expr>(&mod.choices[0].selector.node);
+        REQUIRE(mod.choices[0].selector.has_value());
+        auto* field_access = std::get_if<datascript::ast::field_access_expr>(&mod.choices[0].selector.value().node);
         REQUIRE(field_access != nullptr);
         CHECK(field_access->field_name == "type");
 
@@ -227,7 +228,8 @@ TEST_SUITE("Parser - Field Access Expressions") {
         REQUIRE(mod.choices.size() == 1);
 
         // Selector should be nested field access
-        auto* outer = std::get_if<datascript::ast::field_access_expr>(&mod.choices[0].selector.node);
+        REQUIRE(mod.choices[0].selector.has_value());
+        auto* outer = std::get_if<datascript::ast::field_access_expr>(&mod.choices[0].selector.value().node);
         REQUIRE(outer != nullptr);
         CHECK(outer->field_name == "type");
 

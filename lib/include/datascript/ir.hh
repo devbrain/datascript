@@ -50,6 +50,8 @@ enum class type_kind {
     // Other primitives
     boolean,
     string,
+    u16_string,
+    u32_string,
 
     // Bitfields
     bitfield,
@@ -239,6 +241,11 @@ struct expr {
             e.false_expr = std::make_unique<expr>(copy(*other.false_expr));
         }
 
+        // Deep copy function call arguments
+        for (const auto& arg : other.arguments) {
+            e.arguments.push_back(std::make_unique<expr>(copy(*arg)));
+        }
+
         return e;
     }
 };
@@ -414,7 +421,11 @@ struct choice_def {
     };
     std::vector<param> parameters;  // Parameters for the choice (e.g., selector value)
 
-    expr selector;
+    std::optional<expr> selector;  // Optional: external (on field) or inline discriminator
+
+    // For inline discriminator choices (no selector), this holds the explicit discriminator type
+    // (uint8/16/32/64) declared by the user. Empty for external discriminator choices.
+    std::optional<type_ref> inferred_discriminator_type;
 
     struct case_def {
         std::vector<expr> case_values;

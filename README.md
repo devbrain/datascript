@@ -120,11 +120,12 @@ struct Message {
 }
 ```
 
-**Conditional Fields**:
+**Conditional Fields** (using `if` or `optional` - both equivalent):
 ```datascript
 struct Header {
     uint8 flags;
-    uint32 extended_data if flags & 0x01;  // Present only if flag set
+    uint32 extended_data if flags & 0x01;       // Present only if flag set
+    uint64 extra optional flags & 0x02;         // Alternative syntax
 }
 ```
 

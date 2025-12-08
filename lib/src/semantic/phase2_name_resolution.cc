@@ -292,7 +292,10 @@ namespace {
 
         // Resolve choice selectors and case types
         for (const auto& choice_def : mod.choices) {
-            resolve_expr(choice_def.selector, analyzed.symbols, diags);
+            // Only resolve selector for external discriminator choices
+            if (choice_def.selector.has_value()) {
+                resolve_expr(choice_def.selector.value(), analyzed.symbols, diags);
+            }
 
             for (const auto& case_def : choice_def.cases) {
                 // Resolve case expressions

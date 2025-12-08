@@ -451,6 +451,115 @@ namespace {
         }
     }
 
+//Helper: Determine smallest integer type that fits a value
+static ast::primitive_type infer_discriminator_type_for_value(uint64_t max_value) {
+    ast::source_pos pos{"", 0, 0};  // Empty source position for inferred types
+    if (max_value <= UINT8_MAX) {
+        return ast::primitive_type{pos, false, 8, ast::endian::unspec};  // uint8
+    } else if (max_value <= UINT16_MAX) {
+        return ast::primitive_type{pos, false, 16, ast::endian::unspec};  // uint16
+    } else if (max_value <= UINT32_MAX) {
+        return ast::primitive_type{pos, false, 32, ast::endian::unspec};  // uint32
+    } else {
+        return ast::primitive_type{pos, false, 64, ast::endian::unspec};  // uint64
+    }
+}
+
+// Validate inline choice discriminator types (explicit type required)
+static void validate_choice_discriminator_types(
+    const ast::module& mod,
+    analyzed_module_set& analyzed,
+    std::vector<diagnostic>& diagnostics)
+{
+    for (const auto& choice : mod.choices) {
+        // Skip external discriminator choices
+        if (choice.selector.has_value()) {
+            continue;
+        }
+
+        // Inline discriminator requires explicit type
+        if (!choice.inline_discriminator_type.has_value()) {
+            diagnostics.push_back(diagnostic{
+                diagnostic_level::error,
+                "",  // code
+                "Inline choice '" + choice.name + "' requires explicit discriminator type (e.g., 'choice " + choice.name + " : uint16 { ... }')",
+                choice.pos
+            });
+            continue;
+        }
+
+        // Extract discriminator type and determine its range
+        const auto& disc_type = choice.inline_discriminator_type.value();
+        const auto& disc_type_variant = disc_type.node;
+
+        // Only primitive types are allowed as discriminators
+        if (!std::holds_alternative<ast::primitive_type>(disc_type_variant)) {
+            diagnostics.push_back(diagnostic{
+                diagnostic_level::error,
+                "",  // code
+                "Inline choice '" + choice.name + "' discriminator must be a primitive integer type (uint8, uint16, uint32, or uint64)",
+                choice.pos
+            });
+            continue;
+        }
+
+        const auto& prim_type = std::get<ast::primitive_type>(disc_type_variant);
+
+        // Only unsigned integer types are allowed
+        if (prim_type.is_signed || prim_type.bits == 1) {
+            diagnostics.push_back(diagnostic{
+                diagnostic_level::error,
+                "",  // code
+                "Inline choice '" + choice.name + "' discriminator must be an unsigned integer type (uint8, uint16, uint32, or uint64)",
+                choice.pos
+            });
+            continue;
+        }
+
+        // Determine maximum value for this type
+        uint64_t max_allowed = UINT64_MAX;
+        if (prim_type.bits == 8) {
+            max_allowed = UINT8_MAX;
+        } else if (prim_type.bits == 16) {
+            max_allowed = UINT16_MAX;
+        } else if (prim_type.bits == 32) {
+            max_allowed = UINT32_MAX;
+        } else if (prim_type.bits != 64) {
+            diagnostics.push_back(diagnostic{
+                diagnostic_level::error,
+                "",  // code
+                "Inline choice '" + choice.name + "' discriminator must be uint8, uint16, uint32, or uint64",
+                choice.pos
+            });
+            continue;
+        }
+
+        // Validate all case values fit within discriminator type range
+        for (const auto& case_def : choice.cases) {
+            for (const auto& case_expr : case_def.case_exprs) {
+                std::set<const ast::constant_def*> eval_stack;
+                auto value = evaluate_expr(case_expr, analyzed, diagnostics, eval_stack);
+
+                if (value && value->type == const_value::kind::integer) {
+                    uint64_t case_val = static_cast<uint64_t>(value->int_val);
+                    if (case_val > max_allowed) {
+                        diagnostics.push_back(diagnostic{
+                            diagnostic_level::error,
+                            "",  // code
+                            "Case value " + std::to_string(case_val) + " exceeds maximum value " +
+                            std::to_string(max_allowed) + " for discriminator type uint" + std::to_string(prim_type.bits),
+                            choice.pos
+                        });
+                    }
+                }
+            }
+        }
+
+        // Store the explicit discriminator type
+        analyzed.choice_discriminator_types.emplace(&choice, prim_type);
+    }
+}
+
 } // anonymous namespace
 
 // ============================================================================
@@ -474,6 +583,12 @@ void evaluate_constants(
     validate_alignment_directives(modules.main.module, analyzed, diagnostics);
     for (const auto& imported : modules.imported) {
         validate_alignment_directives(imported.module, analyzed, diagnostics);
+    }
+
+    // Validate discriminator types for inline choices (explicit type required)
+    validate_choice_discriminator_types(modules.main.module, analyzed, diagnostics);
+    for (const auto& imported : modules.imported) {
+        validate_choice_discriminator_types(imported.module, analyzed, diagnostics);
     }
 }
 

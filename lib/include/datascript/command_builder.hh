@@ -245,6 +245,13 @@ public:
         bool is_static
     );
 
+    void emit_method_start_choice(
+        const std::string& name,
+        const ir::choice_def* target_choice,
+        bool use_exceptions,
+        bool is_static
+    );
+
     /**
      * Emit method end command.
      */

@@ -156,6 +156,16 @@ namespace datascript::ast {
         source_pos pos;
     };
 
+    struct u16_string_type {
+        source_pos pos;
+        endian byte_order{endian::unspec}; // unspec/little/big
+    };
+
+    struct u32_string_type {
+        source_pos pos;
+        endian byte_order{endian::unspec}; // unspec/little/big
+    };
+
     struct bool_type {
         source_pos pos;
     };
@@ -200,6 +210,8 @@ namespace datascript::ast {
         bit_field_type_fixed,
         bit_field_type_expr,
         string_type,
+        u16_string_type,
+        u32_string_type,
         bool_type,
         qualified_name,
         array_type_fixed,
@@ -408,7 +420,8 @@ namespace datascript::ast {
         source_pos pos;
         std::string name;
         std::vector<param> parameters;        // Optional type parameters
-        expr selector;
+        std::optional<expr> selector;         // Optional: external (on field) or inline discriminator
+        std::optional<type> inline_discriminator_type;  // Required for inline choices (when selector is nullopt)
         std::vector<choice_case> cases;
         std::optional<std::string> docstring;
     };

@@ -652,14 +652,19 @@ namespace {
 
         // Check choice selectors and case expressions
         for (const auto& choice_def : mod.choices) {
-            auto selector_cat = check_expr(choice_def.selector, analyzed, diags);
+            // For external discriminator choices, check selector and case expression types
+            std::optional<type_cat> selector_cat;
+            if (choice_def.selector.has_value()) {
+                selector_cat = check_expr(choice_def.selector.value(), analyzed, diags);
+            }
 
             for (const auto& case_def : choice_def.cases) {
-                // Check case expressions match selector type
+                // Check case expressions match selector type (for external discriminator)
                 for (const auto& case_expr : case_def.case_exprs) {
                     auto case_cat = check_expr(case_expr, analyzed, diags);
-                    if (selector_cat != case_cat &&
-                        selector_cat != type_cat::unknown &&
+                    if (selector_cat.has_value() &&
+                        selector_cat.value() != case_cat &&
+                        selector_cat.value() != type_cat::unknown &&
                         case_cat != type_cat::unknown) {
                         add_error(diags, diag_codes::E_TYPE_MISMATCH,
                             "Case expression type does not match selector type",

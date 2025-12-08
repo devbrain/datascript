@@ -305,7 +305,8 @@ TEST_SUITE("Parser - Array Indexing Expressions") {
         REQUIRE(mod.choices.size() == 1);
 
         // Selector should be array indexing
-        auto* array_index = std::get_if<datascript::ast::array_index_expr>(&mod.choices[0].selector.node);
+        REQUIRE(mod.choices[0].selector.has_value());
+        auto* array_index = std::get_if<datascript::ast::array_index_expr>(&mod.choices[0].selector.value().node);
         REQUIRE(array_index != nullptr);
 
         auto* data_id = std::get_if<datascript::ast::identifier>(&array_index->array->node);

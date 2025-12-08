@@ -56,6 +56,8 @@ typedef struct ast_const ast_const_t;
 /* These provide compile-time type safety in grammar without runtime overhead */
 typedef struct ast_primitive_type ast_primitive_type_t;
 typedef struct ast_string_type ast_string_type_t;
+typedef struct ast_u16_string_type ast_u16_string_type_t;
+typedef struct ast_u32_string_type ast_u32_string_type_t;
 typedef struct ast_bool_type ast_bool_type_t;
 typedef struct ast_bitfield_type ast_bitfield_type_t;
 typedef struct ast_qualified_name ast_qualified_name_t;
@@ -136,6 +138,8 @@ void parser_build_subtype(parser_context_t* ctx, ast_type_t* base_type, token_va
 ast_primitive_type_t* parser_build_integer_type(parser_context_t* ctx, int is_signed, int bits, int endian);
 ast_primitive_type_t* parser_build_integer_type_with_endian(parser_context_t* ctx, ast_primitive_type_t* type, int endian);
 ast_string_type_t* parser_build_string_type(parser_context_t* ctx);
+ast_u16_string_type_t* parser_build_u16_string_type(parser_context_t* ctx, int endian);
+ast_u32_string_type_t* parser_build_u32_string_type(parser_context_t* ctx, int endian);
 ast_bool_type_t* parser_build_bool_type(parser_context_t* ctx);
 ast_bitfield_type_t* parser_build_bit_field(parser_context_t* ctx, token_value_t* width_tok);
 ast_bitfield_type_t* parser_build_bit_field_expr(parser_context_t* ctx, ast_expr_t* width_expr);
@@ -229,6 +233,7 @@ ast_choice_case_t* parser_build_choice_default(parser_context_t* ctx, ast_field_
 ast_choice_case_list_t* parser_build_choice_case_list_single(parser_context_t* ctx, ast_choice_case_t* choice_case);
 ast_choice_case_list_t* parser_build_choice_case_list_append(parser_context_t* ctx, ast_choice_case_list_t* list, ast_choice_case_t* choice_case);
 void parser_build_choice(parser_context_t* ctx, token_value_t* name_tok, ast_param_list_t* params, ast_expr_t* selector, ast_choice_case_list_t* cases, token_value_t* docstring);
+void parser_build_choice_inline(parser_context_t* ctx, token_value_t* name_tok, ast_param_list_t* params, ast_type_t* discriminator_type, ast_choice_case_list_t* cases, token_value_t* docstring);
 
 /* Array type builders */
 ast_array_type_fixed_t* parser_build_array_type_fixed(parser_context_t* ctx, ast_type_t* element_type, ast_expr_t* size);
@@ -238,6 +243,8 @@ ast_array_type_unsized_t* parser_build_array_type_unsized(parser_context_t* ctx,
 /* Type conversion helpers - upcast from specific to general */
 ast_type_t* parser_primitive_to_type(ast_primitive_type_t* prim);
 ast_type_t* parser_string_to_type(ast_string_type_t* str);
+ast_type_t* parser_u16_string_to_type(ast_u16_string_type_t* str);
+ast_type_t* parser_u32_string_to_type(ast_u32_string_type_t* str);
 ast_type_t* parser_bool_to_type(ast_bool_type_t* b);
 ast_type_t* parser_bitfield_to_type(ast_bitfield_type_t* bf);
 ast_type_t* parser_qualified_name_to_type(ast_qualified_name_t* qname);

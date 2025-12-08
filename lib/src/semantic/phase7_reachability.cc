@@ -210,7 +210,10 @@ namespace {
 
         // Track choice selector and case types
         for (const auto& choice_def : mod.choices) {
-            track_expr_usage(choice_def.selector, analyzed, tracker);
+            // Only track selector for external discriminator choices
+            if (choice_def.selector.has_value()) {
+                track_expr_usage(choice_def.selector.value(), analyzed, tracker);
+            }
             for (const auto& case_def : choice_def.cases) {
                 for (const auto& case_expr : case_def.case_exprs) {
                     track_expr_usage(case_expr, analyzed, tracker);

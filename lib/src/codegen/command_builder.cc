@@ -327,8 +327,55 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
 
     // Generate safe mode reader: template<typename SelectorType> static ReadResult<Choice> read_safe(...)
     if (modes.generate_safe) {
-        emit_method_start("read_safe", StartMethodCommand::MethodKind::ChoiceReader,
-                         nullptr, false, true);
+        emit_method_start_choice("read_safe", &choice_def, false, true);
+
+        // For inline discriminator choices, peek at discriminator value
+        bool is_inline_discriminator = !choice_def.selector.has_value() &&
+                                       choice_def.inferred_discriminator_type.has_value();
+        if (is_inline_discriminator) {
+            // Generate peek operation based on inferred type
+            const auto& discrim_type = choice_def.inferred_discriminator_type.value();
+
+            // Create a peek function call expression
+            ir::expr peek_call;
+            peek_call.type = ir::expr::function_call;
+
+            // Determine peek function name based on type kind
+            std::string peek_func = "peek_uint8";  // default
+            switch (discrim_type.kind) {
+                case ir::type_kind::uint16:
+                    peek_func = "peek_uint16_le";  // TODO: handle endianness
+                    break;
+                case ir::type_kind::uint32:
+                    peek_func = "peek_uint32_le";
+                    break;
+                case ir::type_kind::uint64:
+                    peek_func = "peek_uint64_le";
+                    break;
+                default:
+                    break;  // Use default uint8
+            }
+
+            peek_call.ref_name = peek_func;  // Store function name in ref_name field
+
+            // Add arguments: data and end (as parameter reference expressions - no prefix)
+            auto data_arg = std::make_unique<ir::expr>();
+            data_arg->type = ir::expr::parameter_ref;
+            data_arg->ref_name = "data";
+            peek_call.arguments.push_back(std::move(data_arg));
+
+            auto end_arg = std::make_unique<ir::expr>();
+            end_arg->type = ir::expr::parameter_ref;
+            end_arg->ref_name = "end";
+            peek_call.arguments.push_back(std::move(end_arg));
+
+            // Add comment
+            emit_comment("Peek at inline discriminator");
+
+            // Declare selector_value with peek result
+            const ir::expr* peek_expr = create_expression(std::move(peek_call));
+            commands_.push_back(std::make_unique<DeclareVariableCommand>("selector_value", &discrim_type, peek_expr));
+        }
 
         // Declare the choice object
         // TODO: Declare choice object for safe mode
@@ -382,8 +429,55 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
 
     // Generate exception mode reader (if needed)
     if (modes.generate_throw) {
-        emit_method_start("read", StartMethodCommand::MethodKind::ChoiceReader,
-                         nullptr, true, true);
+        emit_method_start_choice("read", &choice_def, true, true);
+
+        // For inline discriminator choices, peek at discriminator value
+        bool is_inline_discriminator = !choice_def.selector.has_value() &&
+                                       choice_def.inferred_discriminator_type.has_value();
+        if (is_inline_discriminator) {
+            // Generate peek operation based on inferred type
+            const auto& discrim_type = choice_def.inferred_discriminator_type.value();
+
+            // Create a peek function call expression
+            ir::expr peek_call;
+            peek_call.type = ir::expr::function_call;
+
+            // Determine peek function name based on type kind
+            std::string peek_func = "peek_uint8";  // default
+            switch (discrim_type.kind) {
+                case ir::type_kind::uint16:
+                    peek_func = "peek_uint16_le";  // TODO: handle endianness
+                    break;
+                case ir::type_kind::uint32:
+                    peek_func = "peek_uint32_le";
+                    break;
+                case ir::type_kind::uint64:
+                    peek_func = "peek_uint64_le";
+                    break;
+                default:
+                    break;  // Use default uint8
+            }
+
+            peek_call.ref_name = peek_func;  // Store function name in ref_name field
+
+            // Add arguments: data and end (as parameter reference expressions - no prefix)
+            auto data_arg = std::make_unique<ir::expr>();
+            data_arg->type = ir::expr::parameter_ref;
+            data_arg->ref_name = "data";
+            peek_call.arguments.push_back(std::move(data_arg));
+
+            auto end_arg = std::make_unique<ir::expr>();
+            end_arg->type = ir::expr::parameter_ref;
+            end_arg->ref_name = "end";
+            peek_call.arguments.push_back(std::move(end_arg));
+
+            // Add comment
+            emit_comment("Peek at inline discriminator");
+
+            // Declare selector_value with peek result
+            const ir::expr* peek_expr = create_expression(std::move(peek_call));
+            commands_.push_back(std::make_unique<DeclareVariableCommand>("selector_value", &discrim_type, peek_expr));
+        }
 
         // Declare the choice object
         commands_.push_back(std::make_unique<DeclareVariableCommand>("obj", choice_def.name));
@@ -488,6 +582,17 @@ void CommandBuilder::emit_method_start(
 ) {
     commands_.push_back(std::make_unique<StartMethodCommand>(
         name, kind, target_struct, use_exceptions, is_static
+    ));
+}
+
+void CommandBuilder::emit_method_start_choice(
+    const std::string& name,
+    const ir::choice_def* target_choice,
+    bool use_exceptions,
+    bool is_static
+) {
+    commands_.push_back(std::make_unique<StartMethodCommand>(
+        name, StartMethodCommand::MethodKind::ChoiceReader, target_choice, use_exceptions, is_static
     ));
 }
 
@@ -743,15 +848,15 @@ void CommandBuilder::emit_choice_field_read(
 
     const auto& choice_def = (*choices_)[choice_idx];
 
-    // Only generate selector evaluation if the field doesn't have explicit selector arguments
-    // (parameterized choice instantiation provides selector args directly)
-    if (field.type.choice_selector_args.empty()) {
+    // Only generate selector evaluation for external discriminator choices
+    // Inline discriminator choices handle the discriminator inside their read() method
+    if (choice_def.selector.has_value() && field.type.choice_selector_args.empty()) {
         // Extract the field name from the selector expression
         std::string selector_field_name;
-        if (choice_def.selector.type == ir::expr::field_ref) {
-            selector_field_name = choice_def.selector.ref_name;
-        } else if (choice_def.selector.type == ir::expr::parameter_ref) {
-            selector_field_name = choice_def.selector.ref_name;
+        if (choice_def.selector->type == ir::expr::field_ref) {
+            selector_field_name = choice_def.selector->ref_name;
+        } else if (choice_def.selector->type == ir::expr::parameter_ref) {
+            selector_field_name = choice_def.selector->ref_name;
         } else {
             // Unknown selector type - use a placeholder
             selector_field_name = "unknown_selector";
@@ -1421,7 +1526,7 @@ void CommandBuilder::emit_module_structs_and_choices(const ir::bundle& module, c
             commands_.push_back(std::make_unique<StartMethodCommand>(
                 "read",
                 StartMethodCommand::MethodKind::UnionReader,
-                nullptr,  // target_struct (not used for unions)
+                static_cast<const ir::struct_def*>(nullptr),  // target_struct (not used for unions)
                 true,     // use_exceptions
                 true      // is_static
             ));

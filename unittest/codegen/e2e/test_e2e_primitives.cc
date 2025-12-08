@@ -98,4 +98,130 @@ TEST_SUITE("E2E - Primitive Types") {
         CHECK(obj.flag3 == true);
         CHECK(obj.flag4 == false);
     }
+
+    TEST_CASE("Utf8Strings - UTF-8 encoded strings") {
+        std::vector<uint8_t> data = {
+            // ascii_text: "Hello"
+            'H', 'e', 'l', 'l', 'o', 0x00,
+            // unicode_text: "Test" (with null terminator)
+            'T', 'e', 's', 't', 0x00,
+            // empty_text: ""
+            0x00
+        };
+
+        const uint8_t* ptr = data.data();
+        Utf8Strings obj = Utf8Strings::read(ptr, ptr + data.size());
+
+        CHECK(obj.ascii_text == "Hello");
+        CHECK(obj.unicode_text == "Test");
+        CHECK(obj.empty_text == "");
+    }
+
+    TEST_CASE("Utf16LeStrings - UTF-16 little-endian strings") {
+        std::vector<uint8_t> data = {
+            // ascii_text: "Hi" (UTF-16 LE)
+            'H', 0x00, 'i', 0x00, 0x00, 0x00,  // null terminator: 0x0000
+            // unicode_text: "AB" (UTF-16 LE)
+            'A', 0x00, 'B', 0x00, 0x00, 0x00,
+            // empty_text: ""
+            0x00, 0x00
+        };
+
+        const uint8_t* ptr = data.data();
+        Utf16LeStrings obj = Utf16LeStrings::read(ptr, ptr + data.size());
+
+        CHECK(obj.ascii_text == u"Hi");
+        CHECK(obj.unicode_text == u"AB");
+        CHECK(obj.empty_text == u"");
+    }
+
+    TEST_CASE("Utf16BeStrings - UTF-16 big-endian strings") {
+        std::vector<uint8_t> data = {
+            // ascii_text: "Hi" (UTF-16 BE)
+            0x00, 'H', 0x00, 'i', 0x00, 0x00,  // null terminator: 0x0000
+            // unicode_text: "AB" (UTF-16 BE)
+            0x00, 'A', 0x00, 'B', 0x00, 0x00,
+            // empty_text: ""
+            0x00, 0x00
+        };
+
+        const uint8_t* ptr = data.data();
+        Utf16BeStrings obj = Utf16BeStrings::read(ptr, ptr + data.size());
+
+        CHECK(obj.ascii_text == u"Hi");
+        CHECK(obj.unicode_text == u"AB");
+        CHECK(obj.empty_text == u"");
+    }
+
+    TEST_CASE("Utf32LeStrings - UTF-32 little-endian strings") {
+        std::vector<uint8_t> data = {
+            // ascii_text: "Hi" (UTF-32 LE)
+            'H', 0x00, 0x00, 0x00, 'i', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  // null terminator
+            // unicode_text: "AB" (UTF-32 LE)
+            'A', 0x00, 0x00, 0x00, 'B', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            // empty_text: ""
+            0x00, 0x00, 0x00, 0x00
+        };
+
+        const uint8_t* ptr = data.data();
+        Utf32LeStrings obj = Utf32LeStrings::read(ptr, ptr + data.size());
+
+        CHECK(obj.ascii_text == U"Hi");
+        CHECK(obj.unicode_text == U"AB");
+        CHECK(obj.empty_text == U"");
+    }
+
+    TEST_CASE("Utf32BeStrings - UTF-32 big-endian strings") {
+        std::vector<uint8_t> data = {
+            // ascii_text: "Hi" (UTF-32 BE)
+            0x00, 0x00, 0x00, 'H', 0x00, 0x00, 0x00, 'i', 0x00, 0x00, 0x00, 0x00,  // null terminator
+            // unicode_text: "AB" (UTF-32 BE)
+            0x00, 0x00, 0x00, 'A', 0x00, 0x00, 0x00, 'B', 0x00, 0x00, 0x00, 0x00,
+            // empty_text: ""
+            0x00, 0x00, 0x00, 0x00
+        };
+
+        const uint8_t* ptr = data.data();
+        Utf32BeStrings obj = Utf32BeStrings::read(ptr, ptr + data.size());
+
+        CHECK(obj.ascii_text == U"Hi");
+        CHECK(obj.unicode_text == U"AB");
+        CHECK(obj.empty_text == U"");
+    }
+
+    TEST_CASE("AllUnicodeStrings - comprehensive test with all string types") {
+        std::vector<uint8_t> data = {
+            // utf8_name: "Test"
+            'T', 'e', 's', 't', 0x00,
+
+            // utf16_le_text: "AB" (UTF-16 LE)
+            'A', 0x00, 'B', 0x00, 0x00, 0x00,
+
+            // utf16_be_text: "CD" (UTF-16 BE)
+            0x00, 'C', 0x00, 'D', 0x00, 0x00,
+
+            // utf16_default: "EF" (UTF-16 LE - default)
+            'E', 0x00, 'F', 0x00, 0x00, 0x00,
+
+            // utf32_le_text: "GH" (UTF-32 LE)
+            'G', 0x00, 0x00, 0x00, 'H', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            // utf32_be_text: "IJ" (UTF-32 BE)
+            0x00, 0x00, 0x00, 'I', 0x00, 0x00, 0x00, 'J', 0x00, 0x00, 0x00, 0x00,
+
+            // utf32_default: "KL" (UTF-32 LE - default)
+            'K', 0x00, 0x00, 0x00, 'L', 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        };
+
+        const uint8_t* ptr = data.data();
+        AllUnicodeStrings obj = AllUnicodeStrings::read(ptr, ptr + data.size());
+
+        CHECK(obj.utf8_name == "Test");
+        CHECK(obj.utf16_le_text == u"AB");
+        CHECK(obj.utf16_be_text == u"CD");
+        CHECK(obj.utf16_default == u"EF");
+        CHECK(obj.utf32_le_text == U"GH");
+        CHECK(obj.utf32_be_text == U"IJ");
+        CHECK(obj.utf32_default == U"KL");
+    }
 }

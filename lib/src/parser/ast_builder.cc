@@ -355,6 +355,14 @@ ast_type_t* parser_string_to_type(ast_string_type_t* str) {
     return reinterpret_cast <ast_type_t*>(str);
 }
 
+ast_type_t* parser_u16_string_to_type(ast_u16_string_type_t* str) {
+    return reinterpret_cast <ast_type_t*>(str);
+}
+
+ast_type_t* parser_u32_string_to_type(ast_u32_string_type_t* str) {
+    return reinterpret_cast <ast_type_t*>(str);
+}
+
 ast_type_t* parser_bool_to_type(ast_bool_type_t* b) {
     return reinterpret_cast <ast_type_t*>(b);
 }
@@ -535,6 +543,42 @@ ast_string_type_t* parser_build_string_type(parser_context_t* ctx) {
         return simple_types <ast_string_type_t, string_type>::make(ctx);
     } catch (const std::exception& e) {
         parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build string type: %s", e.what());
+        return nullptr;
+    }
+}
+
+ast_u16_string_type_t* parser_build_u16_string_type(parser_context_t* ctx, int endian_param) {
+    if (!ctx || !ctx->ast_builder) {
+        return nullptr;
+    }
+
+    try {
+        using namespace datascript::ast;
+        endian e = endian::unspec;
+        if (endian_param == datascript::parser::ENDIAN_LITTLE) e = endian::little;
+        else if (endian_param == datascript::parser::ENDIAN_BIG) e = endian::big;
+
+        return simple_types <ast_u16_string_type_t, u16_string_type>::make(ctx, e);
+    } catch (const std::exception& ex) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build u16string type: %s", ex.what());
+        return nullptr;
+    }
+}
+
+ast_u32_string_type_t* parser_build_u32_string_type(parser_context_t* ctx, int endian_param) {
+    if (!ctx || !ctx->ast_builder) {
+        return nullptr;
+    }
+
+    try {
+        using namespace datascript::ast;
+        endian e = endian::unspec;
+        if (endian_param == datascript::parser::ENDIAN_LITTLE) e = endian::little;
+        else if (endian_param == datascript::parser::ENDIAN_BIG) e = endian::big;
+
+        return simple_types <ast_u32_string_type_t, u32_string_type>::make(ctx, e);
+    } catch (const std::exception& ex) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build u32string type: %s", ex.what());
         return nullptr;
     }
 }
@@ -2233,7 +2277,7 @@ void parser_build_choice(parser_context_t* ctx, token_value_t* name_tok, ast_par
     datascript::parser::param_list_guard param_guard(reinterpret_cast <param_list_holder*>(params));
     datascript::parser::choice_case_list_guard case_guard(reinterpret_cast <choice_case_list_holder*>(cases));
 
-    if (!ctx || !ctx->ast_builder || !name_tok || !selector || !case_guard) {
+    if (!ctx || !ctx->ast_builder || !name_tok || !case_guard) {
         return;
     }
 
@@ -2253,8 +2297,12 @@ void parser_build_choice(parser_context_t* ctx, token_value_t* name_tok, ast_par
             }
         }
 
-        /* Get selector expression */
-        auto* selector_expr = reinterpret_cast <expr*>(selector);
+        /* Get selector expression (optional for inline discriminator) */
+        std::optional<expr> selector_expr;
+        if (selector) {
+            auto* expr_ptr = reinterpret_cast <expr*>(selector);
+            selector_expr = std::move(*expr_ptr);
+        }
 
         /* Extract cases from list */
         std::vector <choice_case> case_defs;
@@ -2266,12 +2314,13 @@ void parser_build_choice(parser_context_t* ctx, token_value_t* name_tok, ast_par
             case_defs.push_back(std::move(*choice_case_ptr));
         }
 
-        /* Create choice definition */
+        /* Create choice definition (external discriminator) */
         choice_def choice_def{
             make_pos(ctx),
             name,
             std::move(param_defs),
-            std::move(*selector_expr),
+            std::move(selector_expr),
+            std::nullopt,  // No inline discriminator type for external discriminator
             std::move(case_defs),
             process_docstring(docstring)
         };
@@ -2280,6 +2329,66 @@ void parser_build_choice(parser_context_t* ctx, token_value_t* name_tok, ast_par
         ctx->ast_builder->module->choices.push_back(std::move(choice_def));
     } catch (const std::exception& e) {
         parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build choice: %s", e.what());
+    }
+    // Guards automatically delete on scope exit
+}
+
+/* Build a choice with inline discriminator (explicit type required) */
+void parser_build_choice_inline(parser_context_t* ctx, token_value_t* name_tok, ast_param_list_t* params, ast_type_t* discriminator_type,
+                                 ast_choice_case_list_t* cases, token_value_t* docstring) {
+    // RAII guards ensure automatic cleanup on all paths
+    datascript::parser::param_list_guard param_guard(reinterpret_cast<param_list_holder*>(params));
+    datascript::parser::choice_case_list_guard case_guard(reinterpret_cast<choice_case_list_holder*>(cases));
+
+    if (!ctx || !ctx->ast_builder || !name_tok || !discriminator_type || !case_guard) {
+        return;
+    }
+
+    try {
+        /* Extract choice name from token */
+        std::string name = extract_string(name_tok);
+
+        /* Extract parameters from list (if any) */
+        std::vector<param> param_defs;
+        if (param_guard) {
+            param_defs.reserve(param_guard->params.size());
+
+            /* Move parameters from temp storage */
+            for (auto* param_ptr : param_guard->params) {
+                auto* param_def_ptr = reinterpret_cast<param*>(param_ptr);
+                param_defs.push_back(std::move(*param_def_ptr));
+            }
+        }
+
+        /* Extract inline discriminator type */
+        auto* type_ptr = reinterpret_cast<type*>(discriminator_type);
+        type inline_disc_type = std::move(*type_ptr);
+
+        /* Extract cases from list */
+        std::vector<choice_case> case_defs;
+        case_defs.reserve(case_guard->cases.size());
+
+        /* Move cases from temp storage */
+        for (auto* case_ptr : case_guard->cases) {
+            auto* choice_case_ptr = reinterpret_cast<choice_case*>(case_ptr);
+            case_defs.push_back(std::move(*choice_case_ptr));
+        }
+
+        /* Create choice definition (inline discriminator) */
+        choice_def choice_def{
+            make_pos(ctx),
+            name,
+            std::move(param_defs),
+            std::nullopt,  // No selector expression for inline discriminator
+            std::move(inline_disc_type),  // Explicit inline discriminator type
+            std::move(case_defs),
+            process_docstring(docstring)
+        };
+
+        /* Add to module */
+        ctx->ast_builder->module->choices.push_back(std::move(choice_def));
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build inline choice: %s", e.what());
     }
     // Guards automatically delete on scope exit
 }

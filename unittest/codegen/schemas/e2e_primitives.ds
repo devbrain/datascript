@@ -43,3 +43,49 @@ struct BooleanFlags {
     bool flag3;
     bool flag4;
 };
+
+/** UTF-8 string test */
+struct Utf8Strings {
+    string ascii_text;
+    string unicode_text;
+    string empty_text;
+};
+
+/** UTF-16 little-endian string test */
+struct Utf16LeStrings {
+    little u16string ascii_text;
+    little u16string unicode_text;
+    little u16string empty_text;
+};
+
+/** UTF-16 big-endian string test */
+struct Utf16BeStrings {
+    big u16string ascii_text;
+    big u16string unicode_text;
+    big u16string empty_text;
+};
+
+/** UTF-32 little-endian string test */
+struct Utf32LeStrings {
+    little u32string ascii_text;
+    little u32string unicode_text;
+    little u32string empty_text;
+};
+
+/** UTF-32 big-endian string test */
+struct Utf32BeStrings {
+    big u32string ascii_text;
+    big u32string unicode_text;
+    big u32string empty_text;
+};
+
+/** All Unicode string types together */
+struct AllUnicodeStrings {
+    string utf8_name;
+    little u16string utf16_le_text;
+    big u16string utf16_be_text;
+    u16string utf16_default;
+    little u32string utf32_le_text;
+    big u32string utf32_be_text;
+    u32string utf32_default;
+};

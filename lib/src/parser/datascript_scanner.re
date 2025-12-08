@@ -89,6 +89,7 @@ scan:
         "function"  { return TOKEN_FUNCTION; }
         "return"    { return TOKEN_RETURN; }
         "if"        { return TOKEN_IF; }
+        "optional"  { return TOKEN_OPTIONAL; }
         "on"        { return TOKEN_ON; }
         "case"      { return TOKEN_CASE; }
         "default"   { return TOKEN_DEFAULT; }
@@ -97,6 +98,8 @@ scan:
         "big"       { return TOKEN_BIG; }
         "bool"      { return TOKEN_BOOL; }
         "string"    { return TOKEN_STRING; }
+        "u16string" { return TOKEN_U16STRING; }
+        "u32string" { return TOKEN_U32STRING; }
         "bit"       { return TOKEN_BIT; }
 
         /* Integer types - must come before identifier */

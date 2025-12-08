@@ -7,7 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **BREAKING: Explicit Discriminator Type Required for Inline Choices** (December 8, 2025)
+  - Inline discriminator choices now require explicit type declaration
+  - **Old syntax (removed):** `choice Name { case 0xFFFF: ... }`
+  - **New syntax (required):** `choice Name : uint16 { case 0xFFFF: ... }`
+  - **Rationale:**
+    - Implicit type inference was misleading and not obvious to users
+    - Could silently change binary format if case values were modified
+    - Explicit declaration makes wire format clear and stable
+    - Consistent with enum underlying type syntax
+  - **Migration:** Add `: uintN` after choice name (where N = 8/16/32/64)
+  - Comprehensive validation: type must be unsigned integer, all case values must fit
+  - Clear error messages guide users to correct syntax
+  - Updated all documentation examples
+
 ### Added
+- **Optional Field Syntax Sugar** (December 7, 2025)
+  - New `optional` keyword as syntactic sugar for conditional fields
+  - Syntax: `field optional condition;` (equivalent to `field if condition;`)
+  - Both syntaxes generate identical C++ code using `std::optional<T>`
+  - Added TOKEN_OPTIONAL to parser and "optional" keyword to lexer
+  - Pure syntactic sugar - desugars during parsing, no AST/IR/codegen changes needed
+  - Updated grammar (`docs/datascript.abnf`) to show both `if` and `optional` alternatives
+  - Comprehensive documentation in language guide and C++ code generation reference
+
+- **Inline Discriminator Choice Types** (December 7, 2025)
+  - Choice types can read and test their own discriminator from the input stream
+  - Syntax: `choice TypeName : discriminator_type { case value: fields... }` (no `on` clause)
+  - Explicit discriminator type (uint8/16/32/64) required
+  - Generated code uses peek-test-dispatch pattern (non-consuming reads)
+  - Peek helper functions: `peek_uint8()`, `peek_uint16_le/be()`, `peek_uint32_le/be()`, `peek_uint64_le/be()`
+  - Useful for formats with magic bytes, markers, or type-dependent headers (e.g., Windows resources: 0xFFFF)
+  - Full backward compatibility with external discriminator choices (`choice on expr`)
+  - Updated grammar (`docs/datascript.abnf`) with required discriminator type
+  - Comprehensive documentation in language guide and C++ code generation reference
+
+- **Unicode String Types** (December 7, 2025)
+  - UTF-16 string type (`u16string`) with null-termination support
+  - UTF-32 string type (`u32string`) with null-termination support
+  - Endianness modifiers for Unicode strings (`little u16string`, `big u32string`)
+  - Default little-endian encoding when endianness not specified
+  - C++ code generation with std::u16string and std::u32string mappings
+  - Reader functions: `read_u16string_le()`, `read_u16string_be()`, `read_u32string_le()`, `read_u32string_be()`
+  - Full integration across lexer, parser, AST, IR, and code generation layers
+  - Comprehensive documentation in language guide and C++ code generation reference
+
 - **GitHub Repository Setup**
   - Comprehensive README.md with project overview, examples, and comparison to Kaitai Struct
   - MIT License for open source distribution

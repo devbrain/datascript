@@ -419,6 +419,12 @@ struct analyzed_module_set {
     /// Used for type checking and code generation.
     std::map<const ast::expr*, ast::type> expression_types;
 
+    /// Inferred discriminator types for inline choices (Phase 3).
+    /// Maps choice definitions (without explicit selector) to their inferred
+    /// discriminator primitive types based on case values.
+    /// Only populated for choices where selector is std::nullopt.
+    std::map<const ast::choice_def*, ast::primitive_type> choice_discriminator_types;
+
     /// Get symbols for a specific package.
     /// @param package_name Fully-qualified package name
     /// @return Pointer to module_symbols or nullptr

@@ -149,6 +149,8 @@ std::string DataScriptRenderer::get_type_name(const ir::type_ref& type) const {
         case ir::type_kind::int128: oss << "int128"; break;
         case ir::type_kind::boolean: oss << "bool"; break;
         case ir::type_kind::string: oss << "string"; break;
+        case ir::type_kind::u16_string: oss << "u16string"; break;
+        case ir::type_kind::u32_string: oss << "u32string"; break;
         case ir::type_kind::bitfield:
             if (type.bit_width.has_value()) {
                 oss << "bit<" << type.bit_width.value() << ">";
@@ -259,7 +261,12 @@ void DataScriptRenderer::render_choice(const ir::choice_def& c) {
         oss << get_type_name(param.type) << " " << param.name;
     }
 
-    oss << ") on " << render_expr(c.selector) << " {";
+    // Only render "on expression" for external discriminator
+    if (c.selector.has_value()) {
+        oss << ") on " << render_expr(c.selector.value()) << " {";
+    } else {
+        oss << ") {";
+    }
     writer_->write_line(oss.str());
     writer_->indent();
 

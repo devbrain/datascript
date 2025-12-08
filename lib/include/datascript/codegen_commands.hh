@@ -226,6 +226,7 @@ struct StartMethodCommand : Command {
     std::string method_name;
     MethodKind kind;
     const ir::struct_def* target_struct;  // For struct-related methods (can be null for custom/union)
+    const ir::choice_def* target_choice;  // For choice-related methods (can be null otherwise)
     const ir::type_ref* return_type;      // For union field readers and user functions
     const std::vector<ir::function_param>* parameters;  // For user functions (pointer to IR data, not copied)
     bool use_exceptions;  // Error handling strategy
@@ -234,18 +235,24 @@ struct StartMethodCommand : Command {
     StartMethodCommand(const std::string& n, MethodKind k,
                       const ir::struct_def* target, bool exceptions, bool stat)
         : Command(StartMethod), method_name(n), kind(k),
-          target_struct(target), return_type(nullptr), parameters(nullptr), use_exceptions(exceptions), is_static(stat) {}
+          target_struct(target), target_choice(nullptr), return_type(nullptr), parameters(nullptr), use_exceptions(exceptions), is_static(stat) {}
+
+    // Constructor for choice readers
+    StartMethodCommand(const std::string& n, MethodKind k,
+                      const ir::choice_def* choice, bool exceptions, bool stat)
+        : Command(StartMethod), method_name(n), kind(k),
+          target_struct(nullptr), target_choice(choice), return_type(nullptr), parameters(nullptr), use_exceptions(exceptions), is_static(stat) {}
 
     // Constructor for union field readers
     StartMethodCommand(const std::string& n, const ir::type_ref* ret_type, bool exceptions, bool stat)
         : Command(StartMethod), method_name(n), kind(MethodKind::UnionFieldReader),
-          target_struct(nullptr), return_type(ret_type), parameters(nullptr), use_exceptions(exceptions), is_static(stat) {}
+          target_struct(nullptr), target_choice(nullptr), return_type(ret_type), parameters(nullptr), use_exceptions(exceptions), is_static(stat) {}
 
     // Constructor for user-defined functions
     StartMethodCommand(const std::string& n, const ir::type_ref* ret_type,
                       const std::vector<ir::function_param>* params, bool stat)
         : Command(StartMethod), method_name(n), kind(MethodKind::UserFunction),
-          target_struct(nullptr), return_type(ret_type), parameters(params),
+          target_struct(nullptr), target_choice(nullptr), return_type(ret_type), parameters(params),
           use_exceptions(true), is_static(stat) {}
 };
 

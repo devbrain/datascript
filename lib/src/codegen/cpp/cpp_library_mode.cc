@@ -682,7 +682,9 @@ void CppLibraryModeGenerator::generate_struct_metadata(
             out << "        FieldType::Array,\n";
         } else if (field.type.kind == ir::type_kind::struct_type) {
             out << "        FieldType::Struct,\n";
-        } else if (field.type.kind == ir::type_kind::string) {
+        } else if (field.type.kind == ir::type_kind::string ||
+                   field.type.kind == ir::type_kind::u16_string ||
+                   field.type.kind == ir::type_kind::u32_string) {
             out << "        FieldType::String,\n";
         } else {
             out << "        FieldType::Primitive,\n";

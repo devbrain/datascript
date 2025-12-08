@@ -112,7 +112,7 @@ TEST_SUITE("Codegen - C++ Renderer") {
 
         // Create custom method (no parameters, returns void)
         commands.push_back(std::make_unique<StartMethodCommand>(
-            "foo", StartMethodCommand::MethodKind::Custom, nullptr, true, false));
+            "foo", StartMethodCommand::MethodKind::Custom, static_cast<const ir::struct_def*>(nullptr), true, false));
         commands.push_back(std::make_unique<EndMethodCommand>());
 
         renderer.render_commands(commands);

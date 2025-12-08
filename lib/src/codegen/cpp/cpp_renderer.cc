@@ -939,7 +939,12 @@ void CppRenderer::render_start_method(const StartMethodCommand& cmd) {
 
     // For choice readers, emit template declaration and initialize choice state
     if (cmd.kind == StartMethodCommand::MethodKind::ChoiceReader) {
-        ctx_ << "template<typename SelectorType>" << endl;
+        // Only emit template for external discriminator choices
+        bool is_inline_discriminator = cmd.target_choice &&
+                                       cmd.target_choice->inferred_discriminator_type.has_value();
+        if (!is_inline_discriminator) {
+            ctx_ << "template<typename SelectorType>" << endl;
+        }
         in_choice_ = true;
         first_choice_case_ = true;  // Reset for first case
     }
@@ -1025,10 +1030,18 @@ void CppRenderer::render_start_method(const StartMethodCommand& cmd) {
             // Union readers have an optional parent parameter for constraint evaluation
             signature << "const uint8_t*& data, const uint8_t* end, const ParentT* parent = nullptr";
             break;
-        case StartMethodCommand::MethodKind::ChoiceReader:
-            // Choice readers have an additional selector_value parameter
-            signature << "const uint8_t*& data, const uint8_t* end, SelectorType selector_value";
+        case StartMethodCommand::MethodKind::ChoiceReader: {
+            // Choice readers may have an additional selector_value parameter
+            // (only for external discriminator choices)
+            bool is_inline_discriminator = cmd.target_choice &&
+                                           cmd.target_choice->inferred_discriminator_type.has_value();
+            if (is_inline_discriminator) {
+                signature << "const uint8_t*& data, const uint8_t* end";
+            } else {
+                signature << "const uint8_t*& data, const uint8_t* end, SelectorType selector_value";
+            }
             break;
+        }
         case StartMethodCommand::MethodKind::StructWriter:
             signature << "const uint8_t*& data, const uint8_t* end";
             break;
@@ -1580,12 +1593,26 @@ std::string CppRenderer::generate_read_call(const ir::type_ref* type, bool use_e
         return cpp_type + "::" + method_name + "(data, end)";
     }
 
-    // For choice types, call with selector_value parameter
+    // For choice types, call with or without selector_value parameter
     if (type->kind == ir::type_kind::choice_type) {
         std::string method_name = use_exceptions ? "read" : "read_safe";
 
+        // Check if this is an inline discriminator choice
+        bool is_inline_discriminator = false;
+        if (module_ && type->type_index && *type->type_index < module_->choices.size()) {
+            const auto& choice_def = module_->choices[*type->type_index];
+            is_inline_discriminator = choice_def.inferred_discriminator_type.has_value();
+        }
+
         // If explicit selector arguments are provided (parameterized choice instantiation),
-        // render those expressions. Otherwise, use default selector_value from context.
+        // render those expressions. Otherwise, for external discriminator choices,
+        // use default selector_value from context. For inline discriminator choices,
+        // don't pass any selector argument.
+        if (is_inline_discriminator) {
+            // Inline discriminator - no selector parameter
+            return cpp_type + "::" + method_name + "(data, end)";
+        }
+
         std::string selector_args;
         if (!type->choice_selector_args.empty()) {
             for (size_t i = 0; i < type->choice_selector_args.size(); ++i) {
@@ -1602,6 +1629,28 @@ std::string CppRenderer::generate_read_call(const ir::type_ref* type, bool use_e
     // For strings, use read_string or read_string_safe
     if (type->kind == ir::type_kind::string) {
         return use_exceptions ? "read_string(data, end)" : "read_string_safe(data, end)";
+    }
+
+    // For UTF-16 strings, use endianness-specific reader
+    if (type->kind == ir::type_kind::u16_string) {
+        std::string func_name;
+        if (type->byte_order.has_value() && *type->byte_order == ir::endianness::big) {
+            func_name = "read_u16string_be";
+        } else {
+            func_name = "read_u16string_le";  // Default to little-endian
+        }
+        return func_name + "(data, end)";
+    }
+
+    // For UTF-32 strings, use endianness-specific reader
+    if (type->kind == ir::type_kind::u32_string) {
+        std::string func_name;
+        if (type->byte_order.has_value() && *type->byte_order == ir::endianness::big) {
+            func_name = "read_u32string_be";
+        } else {
+            func_name = "read_u32string_le";  // Default to little-endian
+        }
+        return func_name + "(data, end)";
     }
 
     // For subtypes, use read_SubtypeName or read_SubtypeName_safe
@@ -1702,6 +1751,14 @@ std::string CppRenderer::ir_type_to_cpp(const ir::type_ref* type) const {
 
         case ir::type_kind::string:
             result = "std::string";
+            break;
+
+        case ir::type_kind::u16_string:
+            result = "std::u16string";
+            break;
+
+        case ir::type_kind::u32_string:
+            result = "std::u32string";
             break;
 
         case ir::type_kind::boolean:

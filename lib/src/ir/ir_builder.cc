@@ -1158,6 +1158,18 @@ type_ref build_type_ref(const ast::type& ast_type,
     else if (std::get_if<ast::string_type>(&ast_type.node)) {
         result.kind = type_kind::string;
     }
+    else if (auto* u16str = std::get_if<ast::u16_string_type>(&ast_type.node)) {
+        result.kind = type_kind::u16_string;
+        if (u16str->byte_order != ast::endian::unspec) {
+            result.byte_order = ast_endianness_to_ir(u16str->byte_order);
+        }
+    }
+    else if (auto* u32str = std::get_if<ast::u32_string_type>(&ast_type.node)) {
+        result.kind = type_kind::u32_string;
+        if (u32str->byte_order != ast::endian::unspec) {
+            result.byte_order = ast_endianness_to_ir(u32str->byte_order);
+        }
+    }
     else if (std::get_if<ast::bool_type>(&ast_type.node)) {
         result.kind = type_kind::boolean;
     }
@@ -1668,8 +1680,18 @@ choice_def build_choice(const ast::choice_def& ast_choice,
         result.parameters.push_back(std::move(param_result));
     }
 
-    // Build selector expression
-    result.selector = build_expr(ast_choice.selector, analyzed, mono_ctx);
+    // Build selector expression (optional for inline discriminator)
+    if (ast_choice.selector.has_value()) {
+        result.selector = build_expr(ast_choice.selector.value(), analyzed, mono_ctx);
+    } else {
+        // Inline discriminator: get explicit validated type from semantic analysis
+        auto disc_type_it = analyzed.choice_discriminator_types.find(&ast_choice);
+        if (disc_type_it != analyzed.choice_discriminator_types.end()) {
+            // Wrap primitive_type in ast::type for build_type_ref
+            ast::type wrapped_type{disc_type_it->second};
+            result.inferred_discriminator_type = build_type_ref(wrapped_type, analyzed, index_maps, mono_ctx);
+        }
+    }
 
     // Build cases
     for (const auto& ast_case : ast_choice.cases) {

@@ -190,7 +190,13 @@ union-case       = optional-docstring type-specifier *S identifier *S [":" *S ex
 ; -----------------------------------------------------------------------------
 ; Choice Definitions (Tagged Unions)
 ; -----------------------------------------------------------------------------
-choice-def       = optional-docstring "choice" *S identifier *S [param-list] *S "on" *S expression *S "{" *S choice-case-list *S "}" *S ";"
+; Two forms:
+;   External discriminator: choice Name on expr { ... }
+;   Inline discriminator:   choice Name : type { ... }
+choice-def       = optional-docstring "choice" *S identifier *S [param-list] *S choice-discriminator *S "{" *S choice-case-list *S "}" *S ";"
+
+choice-discriminator = "on" *S expression           ; External: reads discriminator from field
+                     / ":" *S type-specifier        ; Inline: reads and tests discriminator (explicit type required)
 
 choice-case-list = choice-case *S *(choice-case *S)
 
@@ -200,8 +206,17 @@ choice-case      = case-clause-list *S field-def
 case-clause-list = case-clause *S *(case-clause *S)
 case-clause      = "case" *S expression *S ":"
 
-field-def        = optional-docstring type-specifier *S identifier *S [":" *S expression] *S ["=" *S expression] *S ["if" *S expression] *S ";"
+; IMPLEMENTATION NOTE: Inline Discriminator Choices
+; Inline discriminator choices (choice Name : type { ... }) read and test their
+; own discriminator from the input stream using peek operations. The discriminator
+; type is explicitly declared (uint8/16/32/64) and validated to ensure all case
+; values fit within the type's range. The generated code peeks at the required
+; number of bytes, tests the discriminator value, then consumes bytes for the
+; matching case.
+
+field-def        = optional-docstring type-specifier *S identifier *S [":" *S expression] *S ["=" *S expression] *S [("if" / "optional") *S expression] *S ";"
                  / optional-docstring type-specifier *S identifier *S "[" *S [expression] *S "]" *S ";"
+;                                                                                           ^ if or optional keyword for conditional fields
 
 ; -----------------------------------------------------------------------------
 ; Enumeration and Bitmask Types

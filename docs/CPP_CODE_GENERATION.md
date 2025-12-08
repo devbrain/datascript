@@ -290,7 +290,7 @@ auto msg = com::example::Message::read(ptr, ptr + data.size());
 - ✅ Fixed arrays (`uint8[10]`)
 - ✅ Variable arrays (`uint8[length]`)
 - ✅ Ranged arrays (`uint8[0..max]`)
-- ✅ Conditional fields (`field if condition`)
+- ✅ Conditional fields (`field if condition` or `field optional condition`)
 - ✅ Bit fields (`bit:4`, `bit:12`)
 - ✅ Endianness (little/big)
 - ✅ Field alignment and labels
@@ -938,12 +938,19 @@ namespace com::example::network {
 | `int32` | `int32_t` | |
 | `int64` | `int64_t` | |
 | `int128` | Custom `int128_t` | Emulated on some platforms |
-| `string` | `std::string` | Variable-length |
+| `string` | `std::string` | Null-terminated UTF-8 |
+| `u16string` | `std::u16string` | Null-terminated UTF-16 |
+| `u32string` | `std::u32string` | Null-terminated UTF-32 |
+| `little u16string` | `std::u16string` | UTF-16 little-endian |
+| `big u16string` | `std::u16string` | UTF-16 big-endian |
+| `little u32string` | `std::u32string` | UTF-32 little-endian |
+| `big u32string` | `std::u32string` | UTF-32 big-endian |
 | `bit:N` | `uint8_t`, `uint16_t`, etc. | Packed bit fields |
 | `enum` | `enum class` | Scoped enums |
 | `struct` | `struct` | Value types |
 | `union` | `std::variant<>` | Discriminated union |
-| `choice` | `std::variant<>` | With selector |
+| `choice on expr` | `std::variant<>` | External discriminator |
+| `choice { ... }` | `std::variant<>` | Inline discriminator (peek-test-dispatch) |
 | Fixed array `T[N]` | `std::array<T, N>` | Compile-time size |
 | Variable array `T[expr]` | `std::vector<T>` | Runtime size |
 
@@ -1062,11 +1069,13 @@ struct Data {
 
 ### Conditional Fields
 
+Conditional fields can use either `if` or `optional` syntax (both are equivalent):
+
 ```datascript
 struct Packet {
     uint8 flags;
-    uint16 length if (flags & 0x01) != 0;
-    uint8 data[length] if (flags & 0x01) != 0;
+    uint16 length if (flags & 0x01) != 0;           // Using 'if'
+    uint8 data[length] optional (flags & 0x01) != 0; // Using 'optional' (equivalent)
 }
 ```
 
@@ -1093,6 +1102,80 @@ struct Packet {
     }
 };
 ```
+
+### Choice Types
+
+Choice types support two modes: external discriminator and inline discriminator.
+
+#### External Discriminator
+
+Traditional choice types with an external selector field:
+
+```datascript
+choice MessagePayload on msg_type {
+    case 1: uint32 number_value;
+    case 2: uint8 text_data[256];
+}
+```
+
+Generates a templated `read()` method:
+
+```cpp
+template<typename SelectorType>
+static MessagePayload read(const uint8_t*& data, const uint8_t* end, SelectorType selector_value) {
+    MessagePayload obj;
+    if (selector_value == (1)) {
+        uint32_t number_value;
+        number_value = read_uint32_le(data, end);
+        obj.data = Case0_number_value{number_value};
+    } else if (selector_value == (2)) {
+        // ...
+    }
+    return obj;
+}
+```
+
+#### Inline Discriminator
+
+Choice types that peek at and test their own discriminator:
+
+```datascript
+choice ResourceIdentifier {
+    case 0xFFFF:
+        uint16 marker;
+        uint16 ordinal;
+    default:
+        u16string name;
+}
+```
+
+Generates a non-templated `read()` method with peek-test-dispatch:
+
+```cpp
+static ResourceIdentifier read(const uint8_t*& data, const uint8_t* end) {
+    // Peek at inline discriminator
+    uint16_t selector_value = peek_uint16_le(data, end);
+    ResourceIdentifier obj;
+    if (selector_value == (0xFFFF)) {
+        uint16_t marker;
+        marker = read_uint16_le(data, end);
+        uint16_t ordinal;
+        ordinal = read_uint16_le(data, end);
+        obj.data = Case0_ordinal{marker, ordinal};
+    } else {
+        std::u16string name;
+        name = read_u16string_le(data, end);
+        obj.data = Case1_name{name};
+    }
+    return obj;
+}
+```
+
+**Key differences:**
+- No template parameter
+- No selector_value parameter
+- Peek helpers (`peek_uint8`, `peek_uint16_le`, etc.) read without advancing pointer
+- Discriminator type inferred from case values (uint8/16/32/64)
 
 ### Functions (Methods)
 
@@ -1303,8 +1386,12 @@ int16_t read_int16_be(const uint8_t*& data, const uint8_t* end);
 int32_t read_int32_be(const uint8_t*& data, const uint8_t* end);
 int64_t read_int64_be(const uint8_t*& data, const uint8_t* end);
 
-// Read string (null-terminated)
+// Read strings (null-terminated)
 std::string read_string(const uint8_t*& data, const uint8_t* end);
+std::u16string read_u16string_le(const uint8_t*& data, const uint8_t* end);
+std::u16string read_u16string_be(const uint8_t*& data, const uint8_t* end);
+std::u32string read_u32string_le(const uint8_t*& data, const uint8_t* end);
+std::u32string read_u32string_be(const uint8_t*& data, const uint8_t* end);
 ```
 
 **All helpers:**
