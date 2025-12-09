@@ -211,6 +211,30 @@ std::string CppLibraryModeGenerator::generate_public_header(
     }
 
     // ========================================================================
+    // Subtypes
+    // ========================================================================
+    if (!bundle.subtypes.empty()) {
+        // Use CommandBuilder to generate subtype commands
+        CommandBuilder builder;
+        cpp_options opts;
+        opts.error_handling = cpp_options::exceptions_only;
+
+        // Build commands for all subtypes
+        for (const auto& subtype_def : bundle.subtypes) {
+            builder.emit_subtype(subtype_def, opts);
+        }
+
+        // Render the commands using the renderer
+        renderer_.set_module(&bundle);
+        renderer_.clear();
+        renderer_.render_commands(builder.take_commands());
+
+        // Get the rendered output
+        ctx << renderer_.get_output();
+        renderer_.clear();
+    }
+
+    // ========================================================================
     // Forward Declarations
     // ========================================================================
     if (!bundle.structs.empty() || !bundle.choices.empty()) {
@@ -301,6 +325,12 @@ std::string CppLibraryModeGenerator::generate_impl_header(
     // Use CommandBuilder to generate only struct definitions
     // This avoids duplicating helpers, enums, and constants
     CommandBuilder builder;
+
+    // IMPORTANT: Set up builder with module context
+    // This is needed for choice field reading (external discriminators)
+    builder.set_choices(&bundle.choices);
+    builder.set_constraints(&bundle.constraints);
+
     cpp_options opts;
     opts.error_handling = cpp_options::exceptions_only;
 
@@ -308,22 +338,22 @@ std::string CppLibraryModeGenerator::generate_impl_header(
     renderer_.set_module(&bundle);
     renderer_.clear();
 
-    // Build and render each struct (with read() method)
-    for (const auto& struct_def : bundle.structs) {
-        auto commands = builder.build_struct_reader(struct_def, true);
-        renderer_.render_commands(commands);
-    }
-
-    // Build and render each choice
-    for (const auto& choice_def : bundle.choices) {
-        auto commands = builder.build_choice_declaration(choice_def, opts);
-        renderer_.render_commands(commands);
-    }
-
-    // Build and render each union
-    for (const auto& union_def : bundle.unions) {
-        auto commands = builder.build_union_declaration(union_def, opts);
-        renderer_.render_commands(commands);
+    // Build and render structs, choices, and unions in topologically sorted order
+    // type_emission_order encoding: 0=struct, 1=union, 2=choice
+    for (const auto& [type_kind, index] : bundle.type_emission_order) {
+        if (type_kind == 0) {
+            // Struct
+            auto commands = builder.build_struct_reader(bundle.structs[index], true);
+            renderer_.render_commands(commands);
+        } else if (type_kind == 1) {
+            // Union
+            auto commands = builder.build_union_declaration(bundle.unions[index], opts);
+            renderer_.render_commands(commands);
+        } else {
+            // Choice (type_kind == 2)
+            auto commands = builder.build_choice_declaration(bundle.choices[index], opts);
+            renderer_.render_commands(commands);
+        }
     }
 
     // Get the rendered struct code
@@ -627,23 +657,25 @@ void CppLibraryModeGenerator::generate_struct_metadata(
 
         // Smart formatting based on field type
         bool is_primitive = (field.type.kind >= ir::type_kind::uint8 && field.type.kind <= ir::type_kind::int128);
+        std::string field_access = "s->" + field.name;
+
         if (is_primitive) {
             // Format hex for types that look like offsets/addresses
             if (field.name.find("offset") != std::string::npos ||
                 field.name.find("address") != std::string::npos ||
                 field.name.find("pointer") != std::string::npos) {
-                out << "    oss << \"0x\" << std::hex << std::setw(8) << std::setfill('0') << s->" << field.name << ";\n";
+                out << "    oss << \"0x\" << std::hex << std::setw(8) << std::setfill('0') << " << field_access << ";\n";
             } else {
-                out << "    oss << static_cast<uint64_t>(s->" << field.name << ");\n";
+                out << "    oss << static_cast<uint64_t>(" << field_access << ");\n";
             }
         } else if (field.type.kind == ir::type_kind::enum_type) {
             // For enums, show numeric value (to_string can be added later)
-            out << "    oss << static_cast<int>(s->" << field.name << ");\n";
+            out << "    oss << static_cast<int>(" << field_access << ");\n";
         } else if (field.type.kind == ir::type_kind::array_fixed ||
                    field.type.kind == ir::type_kind::array_variable ||
                    field.type.kind == ir::type_kind::array_ranged) {
             // Show array size
-            out << "    oss << \"[\" << s->" << field.name << ".size() << \" items]\";\n";
+            out << "    oss << \"[\" << " << field_access << ".size() << \" items]\";\n";
         } else {
             // Generic fallback
             out << "    oss << \"<\" << \"" << renderer_.get_type_name(field.type) << "\" << \">\";\n";

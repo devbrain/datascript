@@ -309,9 +309,6 @@ TEST_SUITE("Choice Discriminator E2E") {
 
         std::string cpp_code = compile_to_cpp(ds_source);
 
-        // DEBUG: Print generated code
-        std::cout << "\n=== GENERATED CODE (no default case) ===\n" << cpp_code << "\n=====================================\n";
-
         // Discriminator should still be read
         CHECK(cpp_code.find("read_uint8") != std::string::npos);
 

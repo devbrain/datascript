@@ -1,0 +1,18 @@
+/** Library Mode Test: Subtypes */
+
+// Simple subtype with constraint
+subtype uint16 Port : this >= 1024;
+
+// Subtype with range constraint
+subtype uint8 Percentage : this <= 100;
+
+// Multiple constraints
+subtype uint16 ValidYear : this >= 1900 && this <= 2100;
+
+// Using subtypes in structs
+struct NetworkConfig {
+    Port server_port;
+    Port client_port;
+    Percentage cpu_limit;
+    ValidYear year;
+};

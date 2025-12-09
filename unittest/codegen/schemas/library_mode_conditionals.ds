@@ -1,0 +1,27 @@
+/** Library Mode Test: Conditional Fields */
+
+// Simple conditional field (prefixed to avoid ODR violation with E2E tests)
+struct LMSimpleConditional {
+    uint8 flag;
+    uint32 value if flag == 1;
+};
+
+// Multiple conditionals
+struct LMMultipleConditionals {
+    uint8 flags;
+    uint16 field_a if (flags & 0x01) != 0;
+    uint16 field_b if (flags & 0x02) != 0;
+    uint16 field_c if (flags & 0x04) != 0;
+};
+
+// Optional syntax sugar
+struct LMOptionalSyntax {
+    uint8 has_data;
+    uint32 data optional has_data != 0;
+};
+
+// Nested conditional
+struct LMNestedConditional {
+    uint8 outer_flag;
+    LMSimpleConditional inner if outer_flag != 0;
+};

@@ -586,24 +586,3 @@ TEST_CASE("Integration - enum values") {
     CHECK(ConnectionFlags::ENCRYPTED == static_cast<ConnectionFlags>(1));
     CHECK(ConnectionFlags::COMPRESSED == static_cast<ConnectionFlags>(2));
 }
-
-// ============================================================================
-// Summary
-// ============================================================================
-
-TEST_CASE("Library Mode - Feature Coverage Summary") {
-    // This test just documents what's covered
-    INFO("✓ Parse functions (3 overloads)");
-    INFO("✓ Metadata infrastructure (FieldMeta, StructMeta)");
-    INFO("✓ StructView API (all methods)");
-    INFO("✓ Field iteration (range-based for)");
-    INFO("✓ Type queries (is_primitive, is_enum, is_struct, is_array)");
-    INFO("✓ Value formatting (primitives, enums, arrays, structs)");
-    INFO("✓ JSON serialization (string and stream overloads)");
-    INFO("✓ Pretty printing (with indentation)");
-    INFO("✓ Error handling (out_of_range, runtime_error)");
-    INFO("✓ Nested struct support (multiple levels)");
-    INFO("✓ Constants and enums");
-    INFO("✓ All field types");
-    CHECK(true);  // Always passes
-}

@@ -1,0 +1,29 @@
+/** Library Mode Test: String Types - Tests all string features with library mode introspection */
+
+// Fixed-length string
+struct FixedString {
+    uint8 data[16];
+};
+
+// Length-prefixed string
+struct PrefixedString {
+    uint8 length;
+    uint8 chars[length];
+};
+
+// Multi-field struct with various string types
+struct StringContainer {
+    uint8 tag;
+    uint8 name_len;
+    uint8 name_chars[name_len];
+    uint16 description_len;
+    uint8 description_chars[description_len];
+    uint8 fixed_data[32];
+};
+
+// Nested strings
+struct OuterString {
+    PrefixedString inner;
+    uint8 suffix_len;
+    uint8 suffix[suffix_len];
+};

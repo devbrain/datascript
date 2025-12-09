@@ -1,0 +1,20 @@
+/** Library Mode Test: Parameterized Types - Tests monomorphization with library mode introspection */
+
+// Simple parameterized buffer
+struct Buffer(uint16 capacity) {
+    uint8 data[capacity];
+};
+
+// Multiple parameter type
+struct Matrix(uint8 rows, uint8 cols) {
+    uint32 values[rows * cols];
+};
+
+// Struct using parameterized types
+struct Container {
+    Buffer(16) small_buffer;
+    Buffer(256) large_buffer;
+    Buffer(16) another_small;  // Should reuse Buffer_16
+    Matrix(4, 4) transform;
+    Matrix(3, 3) rotation;
+};

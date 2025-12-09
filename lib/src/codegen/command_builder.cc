@@ -100,7 +100,7 @@ std::vector<CommandPtr> CommandBuilder::build_struct_reader(
 
     // Emit field declarations
     for (const auto& field : struct_def.fields) {
-        emit_field_declaration(field.name, &field.type, "");  // Pass IR type, not C++ string
+        emit_field_declaration(field.name, &field.type, "");
     }
 
     // Start read() method - renderer will format signature based on method kind and error handling
@@ -129,15 +129,31 @@ std::vector<CommandPtr> CommandBuilder::build_struct_reader(
             emit_variable_assignment("obj." + field.name, &field.default_value.value());
         }
 
+        // Check if field is conditional (runtime condition)
+        bool is_conditional = (field.condition == ir::field::runtime && field.runtime_condition.has_value());
+
+        if (is_conditional) {
+            // Wrap conditional field read in if statement
+            emit_comment("Conditional field: " + field.name);
+            emit_if(&field.runtime_condition.value());
+        }
+
         // Check if this starts a sequence of bitfields
         if (field.type.kind == ir::type_kind::bitfield && field.type.bit_width.has_value()) {
             // Batch consecutive bitfields together
             i = emit_bitfield_sequence(struct_def.fields, i, use_exceptions);
-        } else {
-            // Normal field read
+        } else if (field.condition == ir::field::always || is_conditional) {
+            // Normal field read (only if not skipped)
             emit_field_read(field, use_exceptions);
             emit_field_constraints(field, use_exceptions);
             i++;
+        } else {
+            // Skip fields with condition == never
+            i++;
+        }
+
+        if (is_conditional) {
+            emit_end_if();
         }
     }
 
@@ -329,52 +345,55 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
     if (modes.generate_safe) {
         emit_method_start_choice("read_safe", &choice_def, false, true);
 
-        // For inline discriminator choices, peek at discriminator value
+        // For inline discriminator choices, read the discriminator value
         bool is_inline_discriminator = !choice_def.selector.has_value() &&
                                        choice_def.inferred_discriminator_type.has_value();
         if (is_inline_discriminator) {
-            // Generate peek operation based on inferred type
+            // Generate read operation based on inferred type
             const auto& discrim_type = choice_def.inferred_discriminator_type.value();
 
-            // Create a peek function call expression
-            ir::expr peek_call;
-            peek_call.type = ir::expr::function_call;
+            // Create a read function call expression
+            ir::expr read_call;
+            read_call.type = ir::expr::function_call;
 
-            // Determine peek function name based on type kind
-            std::string peek_func = "peek_uint8";  // default
+            // Determine read function name based on type kind
+            std::string read_func = "read_uint8";  // default
             switch (discrim_type.kind) {
+                case ir::type_kind::uint8:
+                    read_func = "read_uint8";
+                    break;
                 case ir::type_kind::uint16:
-                    peek_func = "peek_uint16_le";  // TODO: handle endianness
+                    read_func = "read_uint16_le";  // TODO: handle endianness
                     break;
                 case ir::type_kind::uint32:
-                    peek_func = "peek_uint32_le";
+                    read_func = "read_uint32_le";
                     break;
                 case ir::type_kind::uint64:
-                    peek_func = "peek_uint64_le";
+                    read_func = "read_uint64_le";
                     break;
                 default:
                     break;  // Use default uint8
             }
 
-            peek_call.ref_name = peek_func;  // Store function name in ref_name field
+            read_call.ref_name = read_func;  // Store function name in ref_name field
 
             // Add arguments: data and end (as parameter reference expressions - no prefix)
             auto data_arg = std::make_unique<ir::expr>();
             data_arg->type = ir::expr::parameter_ref;
             data_arg->ref_name = "data";
-            peek_call.arguments.push_back(std::move(data_arg));
+            read_call.arguments.push_back(std::move(data_arg));
 
             auto end_arg = std::make_unique<ir::expr>();
             end_arg->type = ir::expr::parameter_ref;
             end_arg->ref_name = "end";
-            peek_call.arguments.push_back(std::move(end_arg));
+            read_call.arguments.push_back(std::move(end_arg));
 
             // Add comment
-            emit_comment("Peek at inline discriminator");
+            emit_comment("Read inline discriminator");
 
-            // Declare selector_value with peek result
-            const ir::expr* peek_expr = create_expression(std::move(peek_call));
-            commands_.push_back(std::make_unique<DeclareVariableCommand>("selector_value", &discrim_type, peek_expr));
+            // Declare selector_value with read result
+            const ir::expr* read_expr = create_expression(std::move(read_call));
+            commands_.push_back(std::make_unique<DeclareVariableCommand>("selector_value", &discrim_type, read_expr));
         }
 
         // Declare the choice object
@@ -383,10 +402,16 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
 
         // Generate if/else-if chain for each case
         size_t case_index = 0;
+        bool has_default_case = false;
         for (const auto& case_item : choice_def.cases) {
             std::vector<const ir::expr*> case_vals;
             for (const auto& val : case_item.case_values) {
                 case_vals.push_back(&val);
+            }
+
+            // Check if this is a default case (empty case_values)
+            if (case_vals.empty()) {
+                has_default_case = true;
             }
 
             emit_choice_case_start(case_vals, &case_item.case_field);
@@ -408,17 +433,20 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             case_index++;
         }
 
-        // Add else clause for invalid selector
-        emit_else();
+        // Only emit error handling if there's no default case
+        if (!has_default_case) {
+            // Add else clause for invalid selector
+            emit_else();
 
-        // Create a string literal expression for the error message
-        ir::expr error_msg;
-        error_msg.type = ir::expr::literal_string;
-        error_msg.string_value = "Invalid selector value for choice " + choice_def.name;
-        const ir::expr* error_expr = create_expression(std::move(error_msg));
+            // Create a string literal expression for the error message
+            ir::expr error_msg;
+            error_msg.type = ir::expr::literal_string;
+            error_msg.string_value = "Invalid selector value for choice " + choice_def.name;
+            const ir::expr* error_expr = create_expression(std::move(error_msg));
 
-        commands_.push_back(std::make_unique<SetErrorMessageCommand>(error_expr));
-        emit_return_value("result");
+            commands_.push_back(std::make_unique<SetErrorMessageCommand>(error_expr));
+            emit_return_value("result");
+        }
         emit_end_if();
 
         // Mark success and return
@@ -431,52 +459,55 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
     if (modes.generate_throw) {
         emit_method_start_choice("read", &choice_def, true, true);
 
-        // For inline discriminator choices, peek at discriminator value
+        // For inline discriminator choices, read the discriminator value
         bool is_inline_discriminator = !choice_def.selector.has_value() &&
                                        choice_def.inferred_discriminator_type.has_value();
         if (is_inline_discriminator) {
-            // Generate peek operation based on inferred type
+            // Generate read operation based on inferred type
             const auto& discrim_type = choice_def.inferred_discriminator_type.value();
 
-            // Create a peek function call expression
-            ir::expr peek_call;
-            peek_call.type = ir::expr::function_call;
+            // Create a read function call expression
+            ir::expr read_call;
+            read_call.type = ir::expr::function_call;
 
-            // Determine peek function name based on type kind
-            std::string peek_func = "peek_uint8";  // default
+            // Determine read function name based on type kind
+            std::string read_func = "read_uint8";  // default
             switch (discrim_type.kind) {
+                case ir::type_kind::uint8:
+                    read_func = "read_uint8";
+                    break;
                 case ir::type_kind::uint16:
-                    peek_func = "peek_uint16_le";  // TODO: handle endianness
+                    read_func = "read_uint16_le";  // TODO: handle endianness
                     break;
                 case ir::type_kind::uint32:
-                    peek_func = "peek_uint32_le";
+                    read_func = "read_uint32_le";
                     break;
                 case ir::type_kind::uint64:
-                    peek_func = "peek_uint64_le";
+                    read_func = "read_uint64_le";
                     break;
                 default:
                     break;  // Use default uint8
             }
 
-            peek_call.ref_name = peek_func;  // Store function name in ref_name field
+            read_call.ref_name = read_func;  // Store function name in ref_name field
 
             // Add arguments: data and end (as parameter reference expressions - no prefix)
             auto data_arg = std::make_unique<ir::expr>();
             data_arg->type = ir::expr::parameter_ref;
             data_arg->ref_name = "data";
-            peek_call.arguments.push_back(std::move(data_arg));
+            read_call.arguments.push_back(std::move(data_arg));
 
             auto end_arg = std::make_unique<ir::expr>();
             end_arg->type = ir::expr::parameter_ref;
             end_arg->ref_name = "end";
-            peek_call.arguments.push_back(std::move(end_arg));
+            read_call.arguments.push_back(std::move(end_arg));
 
             // Add comment
-            emit_comment("Peek at inline discriminator");
+            emit_comment("Read inline discriminator");
 
-            // Declare selector_value with peek result
-            const ir::expr* peek_expr = create_expression(std::move(peek_call));
-            commands_.push_back(std::make_unique<DeclareVariableCommand>("selector_value", &discrim_type, peek_expr));
+            // Declare selector_value with read result
+            const ir::expr* read_expr = create_expression(std::move(read_call));
+            commands_.push_back(std::make_unique<DeclareVariableCommand>("selector_value", &discrim_type, read_expr));
         }
 
         // Declare the choice object
@@ -484,10 +515,16 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
 
         // Generate if/else-if chain for each case
         size_t case_index = 0;
+        bool has_default_case = false;
         for (const auto& case_item : choice_def.cases) {
             std::vector<const ir::expr*> case_vals;
             for (const auto& val : case_item.case_values) {
                 case_vals.push_back(&val);
+            }
+
+            // Check if this is a default case (empty case_values)
+            if (case_vals.empty()) {
+                has_default_case = true;
             }
 
             emit_choice_case_start(case_vals, &case_item.case_field);
@@ -509,15 +546,18 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             case_index++;
         }
 
-        // Add else clause for invalid selector
-        emit_else();
+        // Only emit error handling if there's no default case
+        if (!has_default_case) {
+            // Add else clause for invalid selector
+            emit_else();
 
-        // Create error message and throw
-        ir::expr error_msg;
-        error_msg.type = ir::expr::literal_string;
-        error_msg.string_value = "Invalid selector value for choice " + choice_def.name;
-        const ir::expr* error_expr = create_expression(std::move(error_msg));
-        commands_.push_back(std::make_unique<ThrowExceptionCommand>("std::runtime_error", error_expr));
+            // Create error message and throw
+            ir::expr error_msg;
+            error_msg.type = ir::expr::literal_string;
+            error_msg.string_value = "Invalid selector value for choice " + choice_def.name;
+            const ir::expr* error_expr = create_expression(std::move(error_msg));
+            commands_.push_back(std::make_unique<ThrowExceptionCommand>("std::runtime_error", error_expr));
+        }
 
         emit_end_if();
 

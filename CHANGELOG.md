@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **ODR Violation in Library Mode Conditional Tests** (December 9, 2025)
+  - Fixed One Definition Rule violation causing test failures
+  - **Bug**: Library mode tests defined `SimpleConditional` and `MultipleConditionals` in `namespace generated`, conflicting with E2E test definitions
+  - **Symptoms**: Tests passed standalone but failed in test suite; wrong struct layout used at runtime
+  - **Root Cause**: Both `test_e2e_conditionals.cc` and `test_library_mode_conditionals.cc` defined same-named structs with different fields in same namespace
+  - **Fix**: Renamed library mode conditional structs with `LM` prefix (`LMSimpleConditional`, `LMMultipleConditionals`, etc.)
+  - All 929 tests now pass
+
+### Changed
+- **Cleaned Up Test Output** (December 9, 2025)
+  - Removed all debug output from unit tests for cleaner test runs
+  - Removed 7 "Feature Coverage Summary" test cases that only printed documentation
+  - Removed 3 `std::cout` debug statements from choice codegen tests
+  - Test output now shows only failures, not misleading debug info
+
 ### Added
 - **Inline Anonymous Structs for Choice Cases** (December 8, 2025)
   - Choice cases can now use inline struct syntax like unions

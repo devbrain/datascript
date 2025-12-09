@@ -1,0 +1,31 @@
+/** Library Mode Test: Endianness - Tests little-endian, big-endian, and mixed endianness */
+
+// Little-endian (default)
+struct LittleEndianData {
+    uint16 word;
+    uint32 dword;
+    uint64 qword;
+};
+
+// Big-endian
+struct BigEndianData {
+    big uint16 word;
+    big uint32 dword;
+    big uint64 qword;
+};
+
+// Mixed endianness
+struct MixedEndianData {
+    uint16 le_word;
+    big uint16 be_word;
+    uint32 le_dword;
+    big uint32 be_dword;
+};
+
+// Network packet header (big-endian)
+struct NetworkHeader {
+    big uint16 packet_length;
+    big uint16 packet_id;
+    big uint32 timestamp;
+    uint8 flags;
+};

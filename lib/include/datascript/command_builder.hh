@@ -166,6 +166,26 @@ public:
     );
 
     // ========================================================================
+    // Context Setup (for library mode and custom builders)
+    // ========================================================================
+
+    /**
+     * Set module choices context.
+     * Required for building structs with choice fields (external discriminators).
+     */
+    void set_choices(const std::vector<ir::choice_def>* choices) {
+        choices_ = choices;
+    }
+
+    /**
+     * Set module constraints context.
+     * Required for building structs with constraint validation.
+     */
+    void set_constraints(const std::vector<ir::constraint_def>* constraints) {
+        constraints_ = constraints;
+    }
+
+    // ========================================================================
     // Component Builders (used internally and by tests)
     // ========================================================================
 

@@ -1,0 +1,108 @@
+/**
+ * Library Mode Test: Choice Types (Comprehensive)
+ * Tests all choice features with library mode introspection
+ */
+
+// ============================================================================
+// External Discriminator Choices
+// ============================================================================
+
+/** Message type tags */
+const uint8 MSG_TEXT = 1;
+const uint8 MSG_NUMBER = 2;
+const uint8 MSG_BINARY = 3;
+
+/** External discriminator choice */
+choice MessagePayload on msg_type {
+    case MSG_TEXT:
+        uint8 text_length;
+    case MSG_NUMBER:
+        uint32 number_value;
+    case MSG_BINARY:
+        uint16 binary_size;
+};
+
+struct Message {
+    uint8 msg_type;
+    MessagePayload payload;
+};
+
+// ============================================================================
+// Inline Discriminator Choices
+// ============================================================================
+
+/** Inline discriminator choice with explicit type */
+choice ResourceId : uint8 {
+    case 0xFF:
+        uint16 ordinal;
+    default:
+        uint8 name_length;
+};
+
+struct Resource {
+    ResourceId id;
+};
+
+/** Inline discriminator with multiple case values */
+choice StatusCode : uint16 {
+    case 200:
+    case 201:
+    case 202:
+        uint8 success_data;
+    case 400:
+    case 401:
+    case 403:
+        uint16 error_code;
+    default:
+        uint32 unknown_status;
+};
+
+struct Response {
+    StatusCode status;
+};
+
+// ============================================================================
+// Choice with Default Case
+// ============================================================================
+
+/** Name or ID field (common pattern in binary formats) */
+choice NameOrId : uint8 {
+    case 0xFF:
+        {
+            uint8 marker;
+            uint16 id_value;
+        } ordinal_id;
+    default:
+        {
+            uint8 length;
+            uint8 chars[length];
+        } string_name;
+};
+
+struct NamedEntity {
+    NameOrId identifier;
+};
+
+// ============================================================================
+// Nested Choices
+// ============================================================================
+
+/** Inner choice */
+choice InnerValue : uint8 {
+    case 1:
+        uint16 small_value;
+    case 2:
+        uint32 large_value;
+};
+
+/** Outer choice containing inner choice */
+choice OuterValue : uint8 {
+    case 0x01:
+        InnerValue nested;
+    case 0x02:
+        uint64 direct_value;
+};
+
+struct NestedChoiceContainer {
+    OuterValue value;
+};

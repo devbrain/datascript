@@ -1,0 +1,28 @@
+/** Library Mode Test: Bitfields */
+
+// Simple bitfield
+struct SimpleBitfield {
+    bit:1 flag_a;
+    bit:1 flag_b;
+    bit:6 reserved;
+};
+
+// Multiple bitfields
+struct MultiBitfield {
+    bit:3 mode;
+    bit:2 priority;
+    bit:1 enabled;
+    bit:10 reserved;
+    bit:1 ready;
+    bit:1 error;
+    bit:6 padding;
+};
+
+// Mixed fields
+struct MixedFields {
+    uint8 header;
+    bit:4 type;
+    bit:4 version;
+    bit:8 options;
+    uint32 data;
+};

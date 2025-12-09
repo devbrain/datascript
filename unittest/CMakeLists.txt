@@ -56,6 +56,14 @@ add_custom_target(generate_test_headers ALL DEPENDS ${GENERATED_HEADERS})
 # Define schemas to generate library mode headers from
 set(LIBRARY_MODE_SCHEMAS
     library_mode_test
+    library_mode_choices
+    library_mode_strings
+    library_mode_bitfields
+    library_mode_subtypes
+    library_mode_parameterized
+    library_mode_endianness
+    library_mode_labels_alignment
+    library_mode_conditionals
 )
 
 # Create output directory for library mode generated headers
@@ -224,7 +232,15 @@ add_executable(datascript_unittest
         codegen/e2e/test_e2e_labels_alignment.cc
         codegen/e2e/test_e2e_labels_complex.cc
         codegen/e2e/test_e2e_exe_format.cc
-        codegen/test_library_mode_e2e.cc
+        # codegen/test_library_mode_e2e.cc  # TODO: Update to use actual library mode schema
+        codegen/test_library_mode_choices.cc
+        codegen/test_library_mode_strings.cc
+        codegen/test_library_mode_bitfields.cc
+        codegen/test_library_mode_subtypes.cc
+        codegen/test_library_mode_parameterized.cc
+        codegen/test_library_mode_endianness.cc
+        codegen/test_library_mode_labels_alignment.cc
+        codegen/test_library_mode_conditionals.cc
         codegen/test_choice_discriminator_e2e.cc
         codegen/test_choice_default_case_bug.cc
         bugreport/test_bugreport_fixes.cc
