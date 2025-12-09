@@ -182,3 +182,73 @@ TEST_CASE("Label/alignment struct - introspection") {
     CHECK(view.field_count() == 4);
     CHECK(std::string(view.type_name()) == "MultipleAlignments");
 }
+
+// ============================================================================
+// Bug Regression: Alignment must use relative offsets, not absolute memory addresses
+// https://github.com/devbrain/datascript/issues/XXX
+// ============================================================================
+
+TEST_CASE("SimpleAlignment - unaligned buffer address (bug regression)") {
+    // This test verifies that alignment is calculated relative to the buffer start,
+    // NOT based on absolute memory addresses. The bug was that align(N) used
+    // uintptr_t alignment on the data pointer, which fails when the buffer
+    // is allocated at a non-aligned memory address.
+
+    auto aligned_data = create_simple_alignment();
+
+    // Create a buffer with 1 extra byte at the start to force unaligned address
+    std::vector<uint8_t> unaligned_buffer(1 + aligned_data.size());
+    unaligned_buffer[0] = 0xFF;  // padding byte
+    std::copy(aligned_data.begin(), aligned_data.end(), unaligned_buffer.begin() + 1);
+
+    // Parse from unaligned address (data.data() + 1)
+    const uint8_t* ptr = unaligned_buffer.data() + 1;
+    const uint8_t* end = ptr + aligned_data.size();
+
+    SimpleAlignment obj = SimpleAlignment::read(ptr, end);
+
+    CHECK(obj.header == 0x12);
+    // The bug would cause incorrect alignment padding based on memory address,
+    // resulting in reading wrong bytes as aligned_value
+    CHECK(obj.aligned_value == 0x12345678);
+}
+
+TEST_CASE("MultipleAlignments - unaligned buffer address (bug regression)") {
+    // Test multiple alignment directives with an unaligned buffer
+    auto aligned_data = create_multiple_alignments();
+
+    // Test with various unaligned offsets (1, 2, 3 bytes)
+    for (size_t offset = 1; offset <= 3; ++offset) {
+        std::vector<uint8_t> unaligned_buffer(offset + aligned_data.size());
+        std::fill(unaligned_buffer.begin(), unaligned_buffer.begin() + offset, 0xFF);
+        std::copy(aligned_data.begin(), aligned_data.end(), unaligned_buffer.begin() + offset);
+
+        const uint8_t* ptr = unaligned_buffer.data() + offset;
+        const uint8_t* end = ptr + aligned_data.size();
+
+        MultipleAlignments obj = MultipleAlignments::read(ptr, end);
+
+        CHECK(obj.byte1 == 0x42);
+        CHECK(obj.word == 0x1234);
+        CHECK(obj.dword == 0x12345678);
+        CHECK(obj.qword == 0x1234567890ABCDEF);
+    }
+}
+
+TEST_CASE("LabelAndAlignment - unaligned buffer address (bug regression)") {
+    // Test combined label and alignment with unaligned buffer
+    auto aligned_data = create_label_and_alignment();
+
+    // Parse from unaligned address
+    std::vector<uint8_t> unaligned_buffer(3 + aligned_data.size());
+    std::copy(aligned_data.begin(), aligned_data.end(), unaligned_buffer.begin() + 3);
+
+    const uint8_t* ptr = unaligned_buffer.data() + 3;
+    const uint8_t* end = ptr + aligned_data.size();
+
+    LabelAndAlignment obj = LabelAndAlignment::read(ptr, end);
+
+    CHECK(obj.data_offset == 12);
+    CHECK(obj.unaligned_byte == 0x42);
+    CHECK(obj.aligned_value == 0x0807060504030201);
+}

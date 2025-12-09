@@ -804,19 +804,30 @@ struct MultiSection {
 
 ### Alignment (Padding)
 
-Align read position to specific byte boundaries:
+Align read position to specific byte boundaries **relative to the start of the struct**:
 
 ```datascript
 struct AlignedData {
-    uint8 header;           // 1 byte
+    uint8 header;           // 1 byte at offset 0
 
-    align(4):               // Pad to 4-byte boundary
-    uint32 aligned_dword;   // Guaranteed aligned
+    align(4):               // Pad to 4-byte boundary (offset 4)
+    uint32 aligned_dword;   // Read at offset 4-7
 
-    align(8):               // Pad to 8-byte boundary
-    uint64 aligned_qword;   // Guaranteed aligned
+    align(8):               // Pad to 8-byte boundary (offset 8)
+    uint64 aligned_qword;   // Read at offset 8-15
 };
 ```
+
+**Binary Layout:**
+```
+Offset  Field           Notes
+0       header          1 byte
+1-3     (padding)       Skipped by align(4)
+4-7     aligned_dword   4-byte aligned from struct start
+8-15    aligned_qword   8-byte aligned from struct start
+```
+
+**Important:** Alignment is calculated **relative to the struct start**, not the absolute memory address of the buffer. This ensures consistent parsing regardless of where the buffer is allocated in memory.
 
 **Common Alignments:**
 

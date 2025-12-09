@@ -1207,11 +1207,13 @@ void CppRenderer::render_align_pointer(const AlignPointerCommand& cmd) {
     uint64_t align = cmd.alignment;
     uint64_t mask = align - 1;
 
-    // Align data pointer to N-byte boundary
+    // Align data pointer to N-byte boundary relative to start of buffer,
+    // NOT to absolute memory address. This ensures consistent parsing
+    // regardless of where the buffer is allocated in memory.
     ctx_.start_scope();
-    ctx_ << "uintptr_t current = reinterpret_cast<uintptr_t>(data);" << endl;
-    ctx_ << "uintptr_t aligned = (current + " + std::to_string(mask) + ") & ~" + std::to_string(mask) + ";" << endl;
-    ctx_ << "data = reinterpret_cast<const uint8_t*>(aligned);" << endl;
+    ctx_ << "size_t offset = data - start;" << endl;
+    ctx_ << "size_t aligned_offset = (offset + " + std::to_string(mask) + ") & ~size_t(" + std::to_string(mask) + ");" << endl;
+    ctx_ << "data = start + aligned_offset;" << endl;
     ctx_.end_scope();
 }
 

@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Alignment Directive Uses Absolute Memory Addresses Instead of Relative Offsets** (December 9, 2025)
+  - Fixed `align(N)` directive using absolute memory addresses instead of relative offsets from buffer start
+  - **Bug**: Generated code aligned the data pointer to absolute memory address boundaries, causing incorrect parsing when the input buffer was allocated at a non-aligned memory address
+  - **Symptoms**: Parsing the same data would succeed or fail depending on where the buffer was allocated in memory; buffer overflows and incorrect field values
+  - **Example**: For `align(4)` after reading 1 byte:
+    - Buffer at `0x7fff1000`: Works by coincidence (already 4-byte aligned)
+    - Buffer at `0x7fff1001`: Incorrect padding added based on memory address
+  - **Root Cause**: `render_align_pointer()` used `reinterpret_cast<uintptr_t>(data)` to align to absolute memory addresses
+  - **Fix**: Changed to calculate alignment relative to the `start` pointer saved at the beginning of each `read()` function:
+    - Before: `uintptr_t aligned = (current + mask) & ~mask;`
+    - After: `size_t aligned_offset = (offset + mask) & ~size_t(mask);` where `offset = data - start`
+  - **Real-world impact**: Enables correct parsing of Windows PE dialog resources and any format with alignment requirements
+  - Files: `cpp_renderer.cc:1206-1218`
+  - 6 new regression tests (3 in single-header mode, 3 in library mode)
+  - All 967 tests pass
+
 - **Inline Discriminator Default Case Byte Consumption** (December 9, 2025)
   - Fixed discriminator byte being incorrectly consumed in default case
   - **Bug**: For inline discriminator choices, the default case consumed the discriminator byte, causing data misalignment

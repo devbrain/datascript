@@ -79,10 +79,10 @@ TEST_SUITE("Codegen - Labels and Alignment") {
         opts.error_handling = cpp_options::exceptions_only;
         std::string cpp_code = generate_cpp_header(ir, opts);
 
-        // Verify alignment padding code is generated
+        // Verify alignment padding code is generated with relative offset (not absolute memory address)
         CHECK(cpp_code.find("Align to 4-byte boundary") != std::string::npos);
-        CHECK(cpp_code.find("uintptr_t current = reinterpret_cast<uintptr_t>(data)") != std::string::npos);
-        CHECK(cpp_code.find("uintptr_t aligned") != std::string::npos);
+        CHECK(cpp_code.find("size_t offset = data - start") != std::string::npos);
+        CHECK(cpp_code.find("size_t aligned_offset") != std::string::npos);
     }
 
     TEST_CASE("Generate code with both label and alignment") {
