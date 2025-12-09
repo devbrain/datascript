@@ -1204,6 +1204,78 @@ With input `"Hello\0"`:
 - Discriminator = 0x48 ('H'), not 0xFF → default case
 - Position restored → `text = "Hello"` (first byte included)
 
+#### Range-Based Discriminators
+
+Choice cases can use comparison operators to match against value ranges:
+
+```datascript
+// NE dialog control class format
+choice ControlClass : uint8 {
+    case >= 0x80:
+        uint8 predefined_class;  // Predefined class IDs: 0x80-0xFF
+    default:
+        string custom_class;     // Custom class names: 0x00-0x7F
+}
+```
+
+Generates range comparison code:
+
+```cpp
+static ControlClass read(const uint8_t*& data, const uint8_t* end) {
+    const uint8_t* saved_data_pos = data;
+    uint8_t selector_value = read_uint8(data, end);
+    ControlClass obj;
+    if (selector_value >= (128)) {
+        // Range case: >= 0x80
+        uint8_t predefined_class;
+        predefined_class = read_uint8(data, end);
+        obj.data = Case0_predefined_class{predefined_class};
+    } else {
+        // Default case
+        data = saved_data_pos;
+        std::string custom_class;
+        custom_class = read_string(data, end);
+        obj.data = Case1_custom_class{custom_class};
+    }
+    return obj;
+}
+```
+
+**Supported operators:**
+
+| Operator | Generated C++ |
+|----------|---------------|
+| `case >= value:` | `selector_value >= (value)` |
+| `case > value:` | `selector_value > (value)` |
+| `case <= value:` | `selector_value <= (value)` |
+| `case < value:` | `selector_value < (value)` |
+| `case != value:` | `selector_value != (value)` |
+
+**Multiple range cases:**
+
+```datascript
+choice MultiRange : uint8 {
+    case >= 0xC0:
+        uint8 high;      // 192-255
+    case >= 0x80:
+        uint8 medium;    // 128-191
+    default:
+        uint8 low;       // 0-127
+}
+```
+
+Generates cascading if-else:
+
+```cpp
+if (selector_value >= (192)) {
+    // high: 192-255
+} else if (selector_value >= (128)) {
+    // medium: 128-191
+} else {
+    // low: 0-127
+}
+```
+
 ### Functions (Methods)
 
 ```datascript

@@ -244,10 +244,21 @@ public:
     void emit_choice_end();
 
     /**
-     * Emit choice case start command.
+     * Emit choice case start command for exact match cases.
      */
     void emit_choice_case_start(std::vector<const ir::expr*> case_values,
                                 const ir::field* case_field);
+
+    /**
+     * Emit choice case start command for range-based cases.
+     *
+     * @param mode The comparison mode (ge, gt, le, lt, ne)
+     * @param range_bound The comparison bound expression (e.g., 0x80 for >= 0x80)
+     * @param case_field The field to read for this case
+     */
+    void emit_choice_case_start_range(ir::case_selector_mode mode,
+                                       const ir::expr* range_bound,
+                                       const ir::field* case_field);
 
     /**
      * Emit choice case end command.

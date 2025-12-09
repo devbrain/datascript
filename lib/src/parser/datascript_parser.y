@@ -45,6 +45,10 @@ void ParseTrace(FILE *TraceFILE, char *zTracePrompt);
     parser_destroy_expr_list($$);
 }
 
+%destructor range_case_clause {
+    parser_destroy_range_case_clause($$);
+}
+
 %destructor choice_case_list {
     parser_destroy_choice_case_list($$);
 }
@@ -95,6 +99,7 @@ void ParseTrace(FILE *TraceFILE, char *zTracePrompt);
 %type field_def_nodoc {ast_field_def_t*}
 %type field_list {ast_field_list_t*}
 %type case_clause_list {ast_expr_list_t*}
+%type range_case_clause {ast_range_case_clause_t*}
 %type choice_case {ast_choice_case_t*}
 %type choice_case_list {ast_choice_case_list_t*}
 %type union_case {ast_union_case_t*}
@@ -883,6 +888,42 @@ case_clause_list(R) ::= CASE expression(E) COLON. {
 
 case_clause_list(R) ::= case_clause_list(L) CASE expression(E) COLON. {
     R = parser_build_expr_list_append(ctx, L, E);
+}
+
+/* Range case clause - "case >= expr:", "case < expr:", etc. */
+range_case_clause(R) ::= CASE GE expression(E) COLON. {
+    R = parser_build_range_case_clause(ctx, PARSER_CASE_GE, E);
+}
+
+range_case_clause(R) ::= CASE GT expression(E) COLON. {
+    R = parser_build_range_case_clause(ctx, PARSER_CASE_GT, E);
+}
+
+range_case_clause(R) ::= CASE LE expression(E) COLON. {
+    R = parser_build_range_case_clause(ctx, PARSER_CASE_LE, E);
+}
+
+range_case_clause(R) ::= CASE LT expression(E) COLON. {
+    R = parser_build_range_case_clause(ctx, PARSER_CASE_LT, E);
+}
+
+range_case_clause(R) ::= CASE NE expression(E) COLON. {
+    R = parser_build_range_case_clause(ctx, PARSER_CASE_NE, E);
+}
+
+/* Choice case with range selector - field definition */
+choice_case(R) ::= range_case_clause(RC) field_def(F). {
+    R = parser_build_choice_case_range(ctx, RC, F);
+}
+
+/* Choice case with range selector - inline struct block */
+choice_case(R) ::= range_case_clause(RC) LBRACE struct_body_list(B) RBRACE IDENTIFIER(N) SEMICOLON. {
+    R = parser_build_choice_case_range_inline(ctx, RC, B, N);
+}
+
+/* Choice case with range selector - empty inline block */
+choice_case(R) ::= range_case_clause(RC) LBRACE RBRACE IDENTIFIER(N) SEMICOLON. {
+    R = parser_build_choice_case_range_inline_empty(ctx, RC, N);
 }
 
 /* Enum and Bitmask definitions */

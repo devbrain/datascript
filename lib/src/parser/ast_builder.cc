@@ -1241,6 +1241,12 @@ struct choice_case_list_holder {
     std::vector <ast_choice_case_t*> cases;
 };
 
+/* Range case clause holder - for "case >= expr:", "case < expr:", etc. */
+struct range_case_clause_holder {
+    int selector_kind;  // parser_case_selector_kind enum value
+    ast_expr_t* bound_expr;  // The comparison bound expression
+};
+
 struct union_case_list_holder {
     std::vector <ast_union_case_t*> cases;
 };
@@ -1276,6 +1282,10 @@ namespace datascript::parser {
         void operator()(choice_case_list_holder* p) const { delete p; }
     };
 
+    struct range_case_clause_deleter {
+        void operator()(range_case_clause_holder* p) const { delete p; }
+    };
+
     struct union_case_list_deleter {
         void operator()(union_case_list_holder* p) const { delete p; }
     };
@@ -1289,6 +1299,7 @@ namespace datascript::parser {
     using struct_body_list_guard = std::unique_ptr <struct_body_list_holder, struct_body_list_deleter>;
     using expr_list_guard = std::unique_ptr <expr_list_holder, expr_list_deleter>;
     using choice_case_list_guard = std::unique_ptr <choice_case_list_holder, choice_case_list_deleter>;
+    using range_case_clause_guard = std::unique_ptr <range_case_clause_holder, range_case_clause_deleter>;
     using union_case_list_guard = std::unique_ptr <union_case_list_holder, union_case_list_deleter>;
     using statement_list_guard = std::unique_ptr <statement_list_holder, statement_list_deleter>;
 }
@@ -2230,6 +2241,8 @@ parser_build_choice_case(parser_context_t* ctx, ast_expr_list_t* case_exprs, ast
         ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
             make_pos(ctx),
             std::move(exprs),
+            case_selector_kind::exact,  // exact match (default)
+            std::nullopt,  // no range bound
             false, // not default
             std::move(items),
             std::move(fname),
@@ -2262,6 +2275,8 @@ ast_choice_case_t* parser_build_choice_default(parser_context_t* ctx, ast_field_
         ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
             make_pos(ctx),
             {}, // empty case_exprs
+            case_selector_kind::exact,  // not used for default, but keep consistent
+            std::nullopt,  // no range bound
             true, // is default
             std::move(items),
             std::move(fname),
@@ -2310,6 +2325,8 @@ ast_choice_case_t* parser_build_choice_case_inline(parser_context_t* ctx, ast_ex
         ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
             make_pos(ctx),
             std::move(exprs),
+            case_selector_kind::exact,  // exact match (default)
+            std::nullopt,  // no range bound
             false, // not default
             std::move(items),
             std::move(fname),
@@ -2349,6 +2366,8 @@ ast_choice_case_t* parser_build_choice_default_inline(parser_context_t* ctx, ast
         ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
             make_pos(ctx),
             {}, // empty case_exprs
+            case_selector_kind::exact,  // not used for default, but keep consistent
+            std::nullopt,  // no range bound
             true, // is default
             std::move(items),
             std::move(fname),
@@ -2391,6 +2410,8 @@ ast_choice_case_t* parser_build_choice_case_inline_empty(parser_context_t* ctx, 
         ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
             make_pos(ctx),
             std::move(exprs),
+            case_selector_kind::exact,  // exact match (default)
+            std::nullopt,  // no range bound
             false, // not default
             {}, // empty items
             std::move(fname),
@@ -2420,6 +2441,8 @@ ast_choice_case_t* parser_build_choice_default_inline_empty(parser_context_t* ct
         ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
             make_pos(ctx),
             {}, // empty case_exprs
+            case_selector_kind::exact,  // not used for default, but keep consistent
+            std::nullopt,  // no range bound
             true, // is default
             {}, // empty items
             std::move(fname),
@@ -2591,6 +2614,170 @@ void parser_build_choice_inline(parser_context_t* ctx, token_value_t* name_tok, 
         parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build inline choice: %s", e.what());
     }
     // Guards automatically delete on scope exit
+}
+
+/* ============================================================================ */
+/* Range-Based Case Clause Builders */
+/* ============================================================================ */
+
+/* Helper to convert parser_case_selector_kind to ast::case_selector_kind */
+static case_selector_kind convert_selector_kind(int parser_kind) {
+    switch (parser_kind) {
+        case PARSER_CASE_EXACT: return case_selector_kind::exact;
+        case PARSER_CASE_GE:    return case_selector_kind::range_ge;
+        case PARSER_CASE_GT:    return case_selector_kind::range_gt;
+        case PARSER_CASE_LE:    return case_selector_kind::range_le;
+        case PARSER_CASE_LT:    return case_selector_kind::range_lt;
+        case PARSER_CASE_NE:    return case_selector_kind::range_ne;
+        default:                return case_selector_kind::exact;
+    }
+}
+
+/* Build a range case clause (e.g., "case >= 0x80:") */
+ast_range_case_clause_t* parser_build_range_case_clause(parser_context_t* ctx, int selector_kind, ast_expr_t* bound_expr) {
+    if (!ctx || !bound_expr) {
+        return nullptr;
+    }
+
+    try {
+        auto* holder = new range_case_clause_holder();
+        holder->selector_kind = selector_kind;
+        holder->bound_expr = bound_expr;
+        return reinterpret_cast<ast_range_case_clause_t*>(holder);
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build range case clause: %s", e.what());
+        return nullptr;
+    }
+}
+
+/* Destroy a range case clause holder */
+void parser_destroy_range_case_clause(ast_range_case_clause_t* clause) {
+    delete reinterpret_cast<range_case_clause_holder*>(clause);
+}
+
+/* Build a choice case with range selector and field definition */
+ast_choice_case_t* parser_build_choice_case_range(parser_context_t* ctx, ast_range_case_clause_t* range_clause, ast_field_def_t* field) {
+    // RAII guard ensures automatic cleanup on all paths
+    datascript::parser::range_case_clause_guard range_guard(reinterpret_cast<range_case_clause_holder*>(range_clause));
+
+    if (!ctx || !ctx->ast_builder || !range_guard || !field) {
+        return nullptr;
+    }
+
+    try {
+        /* Get field from temp storage */
+        auto* field_def_ptr = reinterpret_cast<field_def*>(field);
+
+        /* Extract field name and wrap field in items vector */
+        std::string fname = field_def_ptr->name;
+        std::vector<struct_body_item> items;
+        items.push_back(std::move(*field_def_ptr));
+
+        /* Extract bound expression */
+        auto* bound_expr_ptr = reinterpret_cast<expr*>(range_guard->bound_expr);
+        expr bound_expr_copy = std::move(*bound_expr_ptr);
+
+        /* Create choice case in temp storage */
+        ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
+            make_pos(ctx),
+            {},  // empty case_exprs (range uses range_bound instead)
+            convert_selector_kind(range_guard->selector_kind),
+            std::move(bound_expr_copy),  // range bound expression
+            false, // not default
+            std::move(items),
+            std::move(fname),
+            false // not anonymous block
+        });
+
+        return reinterpret_cast<ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build range choice case: %s", e.what());
+        return nullptr;
+    }
+    // range_guard automatically deletes on scope exit
+}
+
+/* Build a choice case with range selector and inline struct block */
+ast_choice_case_t* parser_build_choice_case_range_inline(parser_context_t* ctx, ast_range_case_clause_t* range_clause,
+                                                          ast_struct_body_list_t* body, token_value_t* name) {
+    // RAII guards ensure automatic cleanup on all paths
+    datascript::parser::range_case_clause_guard range_guard(reinterpret_cast<range_case_clause_holder*>(range_clause));
+    datascript::parser::struct_body_list_guard body_guard(reinterpret_cast<struct_body_list_holder*>(body));
+
+    if (!ctx || !ctx->ast_builder || !range_guard || !name) {
+        return nullptr;
+    }
+
+    try {
+        /* Extract field name from token */
+        std::string fname = extract_string(name);
+
+        /* Extract body items from list */
+        std::vector<struct_body_item> items;
+        if (body_guard) {
+            items = std::move(body_guard->items);
+        }
+
+        /* Extract bound expression */
+        auto* bound_expr_ptr = reinterpret_cast<expr*>(range_guard->bound_expr);
+        expr bound_expr_copy = std::move(*bound_expr_ptr);
+
+        /* Create choice case with inline block in temp storage */
+        ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
+            make_pos(ctx),
+            {},  // empty case_exprs (range uses range_bound instead)
+            convert_selector_kind(range_guard->selector_kind),
+            std::move(bound_expr_copy),  // range bound expression
+            false, // not default
+            std::move(items),
+            std::move(fname),
+            true // anonymous block
+        });
+
+        return reinterpret_cast<ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build range inline choice case: %s", e.what());
+        return nullptr;
+    }
+    // Guards automatically delete on scope exit
+}
+
+/* Build a choice case with range selector and empty inline block */
+ast_choice_case_t* parser_build_choice_case_range_inline_empty(parser_context_t* ctx, ast_range_case_clause_t* range_clause,
+                                                                token_value_t* name) {
+    // RAII guard ensures automatic cleanup on all paths
+    datascript::parser::range_case_clause_guard range_guard(reinterpret_cast<range_case_clause_holder*>(range_clause));
+
+    if (!ctx || !ctx->ast_builder || !range_guard || !name) {
+        return nullptr;
+    }
+
+    try {
+        /* Extract field name from token */
+        std::string fname = extract_string(name);
+
+        /* Extract bound expression */
+        auto* bound_expr_ptr = reinterpret_cast<expr*>(range_guard->bound_expr);
+        expr bound_expr_copy = std::move(*bound_expr_ptr);
+
+        /* Create choice case with empty inline block in temp storage */
+        ctx->ast_builder->temp_choice_cases.emplace_back(choice_case{
+            make_pos(ctx),
+            {},  // empty case_exprs (range uses range_bound instead)
+            convert_selector_kind(range_guard->selector_kind),
+            std::move(bound_expr_copy),  // range bound expression
+            false, // not default
+            {}, // empty items
+            std::move(fname),
+            true // anonymous block (even though empty)
+        });
+
+        return reinterpret_cast<ast_choice_case_t*>(&ctx->ast_builder->temp_choice_cases.back());
+    } catch (const std::exception& e) {
+        parser_set_error(ctx, PARSER_ERROR_SEMANTIC, "Failed to build empty range inline choice case: %s", e.what());
+        return nullptr;
+    }
+    // range_guard automatically deletes on scope exit
 }
 
 /* ============================================================================ */

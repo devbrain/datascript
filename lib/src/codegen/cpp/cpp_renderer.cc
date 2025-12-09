@@ -893,14 +893,32 @@ void CppRenderer::render_end_choice(const EndChoiceCommand& cmd) {
 
 void CppRenderer::render_start_choice_case(const StartChoiceCaseCommand& cmd) {
     // Render if/else-if condition for case matching
-    if (!cmd.case_values.empty()) {
-        // Generate condition: selector_value == (value1) || selector_value == (value2) || ...
-        std::string condition;
+    std::string condition;
+
+    // Check for range-based selector mode
+    if (cmd.selector_mode != ir::case_selector_mode::exact) {
+        // Range-based case: generate comparison like "selector_value >= 0x80"
+        if (cmd.range_bound) {
+            std::string op;
+            switch (cmd.selector_mode) {
+                case ir::case_selector_mode::ge: op = ">="; break;
+                case ir::case_selector_mode::gt: op = ">"; break;
+                case ir::case_selector_mode::le: op = "<="; break;
+                case ir::case_selector_mode::lt: op = "<"; break;
+                case ir::case_selector_mode::ne: op = "!="; break;
+                default: op = "=="; break;  // Should not happen
+            }
+            condition = "selector_value " + op + " (" + render_expression(cmd.range_bound) + ")";
+        }
+    } else if (!cmd.case_values.empty()) {
+        // Exact match case: generate condition like "selector_value == (value1) || ..."
         for (size_t i = 0; i < cmd.case_values.size(); ++i) {
             if (i > 0) condition += " || ";
             condition += "selector_value == (" + render_expression(cmd.case_values[i]) + ")";
         }
+    }
 
+    if (!condition.empty()) {
         // Use "if" for first case, "else if" for subsequent cases
         if (in_choice_ && first_choice_case_) {
             ctx_.start_if(condition);
@@ -909,7 +927,7 @@ void CppRenderer::render_start_choice_case(const StartChoiceCaseCommand& cmd) {
             ctx_.start_else_if(condition);
         }
     } else if (in_choice_ && !first_choice_case_) {
-        // Default case (empty case_values) - generate "else" block
+        // Default case (empty case_values and not range) - generate "else" block
         ctx_.start_else();
     }
 }

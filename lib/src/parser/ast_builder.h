@@ -47,6 +47,16 @@ enum parser_binary_op {
     PARSER_BINARY_LOG_OR = 17
 };
 
+/* Case selector kind codes - match ast::case_selector_kind enum values */
+enum parser_case_selector_kind {
+    PARSER_CASE_EXACT = 0,   /* case 0xFF:           (selector == value) */
+    PARSER_CASE_GE = 1,      /* case >= 0x80:        (selector >= value) */
+    PARSER_CASE_GT = 2,      /* case > 0x7F:         (selector > value) */
+    PARSER_CASE_LE = 3,      /* case <= 0x7F:        (selector <= value) */
+    PARSER_CASE_LT = 4,      /* case < 0x80:         (selector < value) */
+    PARSER_CASE_NE = 5       /* case != 0x00:        (selector != value) */
+};
+
 /* Forward declarations for AST node types (opaque pointers) */
 typedef struct ast_type ast_type_t;
 typedef struct ast_expr ast_expr_t;
@@ -110,6 +120,7 @@ typedef struct ast_choice_case ast_choice_case_t;
 typedef struct ast_choice_case_list ast_choice_case_list_t;
 typedef struct ast_expr_list ast_expr_list_t;
 typedef struct ast_choice_def ast_choice_def_t;
+typedef struct ast_range_case_clause ast_range_case_clause_t;  /* For range-based case selectors */
 
 /* Function and statement types */
 typedef struct ast_function_def ast_function_def_t;
@@ -239,6 +250,13 @@ ast_choice_case_list_t* parser_build_choice_case_list_single(parser_context_t* c
 ast_choice_case_list_t* parser_build_choice_case_list_append(parser_context_t* ctx, ast_choice_case_list_t* list, ast_choice_case_t* choice_case);
 void parser_build_choice(parser_context_t* ctx, token_value_t* name_tok, ast_param_list_t* params, ast_expr_t* selector, ast_choice_case_list_t* cases, token_value_t* docstring);
 void parser_build_choice_inline(parser_context_t* ctx, token_value_t* name_tok, ast_param_list_t* params, ast_type_t* discriminator_type, ast_choice_case_list_t* cases, token_value_t* docstring);
+
+/* Range-based case clause builders (for choice types) */
+ast_range_case_clause_t* parser_build_range_case_clause(parser_context_t* ctx, int selector_kind, ast_expr_t* bound_expr);
+ast_choice_case_t* parser_build_choice_case_range(parser_context_t* ctx, ast_range_case_clause_t* range_clause, ast_field_def_t* field);
+ast_choice_case_t* parser_build_choice_case_range_inline(parser_context_t* ctx, ast_range_case_clause_t* range_clause, ast_struct_body_list_t* body, token_value_t* name);
+ast_choice_case_t* parser_build_choice_case_range_inline_empty(parser_context_t* ctx, ast_range_case_clause_t* range_clause, token_value_t* name);
+void parser_destroy_range_case_clause(ast_range_case_clause_t* clause);
 
 /* Array type builders */
 ast_array_type_fixed_t* parser_build_array_type_fixed(parser_context_t* ctx, ast_type_t* element_type, ast_expr_t* size);

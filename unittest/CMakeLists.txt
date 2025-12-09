@@ -248,6 +248,7 @@ add_executable(datascript_unittest
         codegen/test_choice_discriminator_e2e.cc
         codegen/test_choice_default_case_bug.cc
         codegen/test_inline_discriminator_peek.cc
+        codegen/test_range_discriminator.cc
         bugreport/test_bugreport_fixes.cc
 )
 

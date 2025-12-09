@@ -204,8 +204,27 @@ choice-case      = case-clause-list *S field-def
                  / "default" *S ":" *S field-def
 
 case-clause-list = case-clause *S *(case-clause *S)
-case-clause      = "case" *S expression *S ":"
+case-clause      = "case" *S expression *S ":"                ; Exact match: case 0xFF:
+                 / "case" *S range-operator *S expression *S ":" ; Range match: case >= 0x80:
 
+range-operator   = ">=" / ">" / "<=" / "<" / "!="
+
+; IMPLEMENTATION NOTE: Range-Based Discriminators
+; Range case clauses allow matching against a range of values using comparison
+; operators instead of exact equality. This is commonly used in binary formats
+; where a discriminator byte's value range determines the type of data that follows.
+; Example: In Windows NE dialog resources, control classes use:
+;   >= 0x80: predefined class ID (Button=0x80, Edit=0x81, etc.)
+;   < 0x80:  string length for custom class name
+;
+; Usage example:
+;   choice ControlClass : uint8 {
+;       case >= 0x80:
+;           uint8 predefined_class;
+;       default:
+;           string custom_class;
+;   };
+;
 ; IMPLEMENTATION NOTE: Inline Discriminator Choices
 ; Inline discriminator choices (choice Name : type { ... }) read and test their
 ; own discriminator from the input stream using peek operations. The discriminator

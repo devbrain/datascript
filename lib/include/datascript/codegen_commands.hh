@@ -196,11 +196,20 @@ struct EndChoiceCommand : Command {
 };
 
 struct StartChoiceCaseCommand : Command {
-    std::vector<const ir::expr*> case_values;  // Selector values for this case
+    std::vector<const ir::expr*> case_values;  // Selector values for exact match cases
+    ir::case_selector_mode selector_mode = ir::case_selector_mode::exact;  // Comparison mode
+    const ir::expr* range_bound = nullptr;     // Range bound expression (for >= 0x80, etc.)
     const ir::field* case_field;               // Field to read for this case
 
+    // Constructor for exact match cases (backward compatible)
     StartChoiceCaseCommand(std::vector<const ir::expr*> vals, const ir::field* fld)
-        : Command(StartChoiceCase), case_values(std::move(vals)), case_field(fld) {}
+        : Command(StartChoiceCase), case_values(std::move(vals)),
+          selector_mode(ir::case_selector_mode::exact), range_bound(nullptr), case_field(fld) {}
+
+    // Constructor for range-based cases
+    StartChoiceCaseCommand(ir::case_selector_mode mode, const ir::expr* bound, const ir::field* fld)
+        : Command(StartChoiceCase), case_values{},
+          selector_mode(mode), range_bound(bound), case_field(fld) {}
 };
 
 struct EndChoiceCaseCommand : Command {

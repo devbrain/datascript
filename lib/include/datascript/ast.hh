@@ -407,10 +407,22 @@ namespace datascript::ast {
         std::optional<std::string> docstring;
     };
 
+    // Case selector kind for range-based discriminators
+    enum class case_selector_kind {
+        exact,      // case 0xFF:           (selector == value)
+        range_ge,   // case >= 0x80:        (selector >= value)
+        range_gt,   // case > 0x7F:         (selector > value)
+        range_le,   // case <= 0x7F:        (selector <= value)
+        range_lt,   // case < 0x80:         (selector < value)
+        range_ne    // case != 0x00:        (selector != value)
+    };
+
     // Choice case (one branch in a choice)
     struct choice_case {
         source_pos pos;
-        std::vector<expr> case_exprs;  // Empty for default case
+        std::vector<expr> case_exprs;  // Empty for default case, values for exact match
+        case_selector_kind selector_kind = case_selector_kind::exact;  // Kind of selector comparison
+        std::optional<expr> range_bound;  // For range selectors (>= 0x80, etc.)
         bool is_default;
         std::vector<struct_body_item> items;  // Items in this case (1 for simple field, N for anonymous block)
         std::string field_name;               // Name of the field

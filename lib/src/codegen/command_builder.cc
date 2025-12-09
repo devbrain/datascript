@@ -424,22 +424,34 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
         size_t case_index = 0;
         bool has_default_case = false;
         for (const auto& case_item : choice_def.cases) {
-            std::vector<const ir::expr*> case_vals;
-            for (const auto& val : case_item.case_values) {
-                case_vals.push_back(&val);
-            }
+            // Check if this is a range-based case
+            bool is_range_case = case_item.selector_mode != ir::case_selector_mode::exact;
 
-            // Check if this is a default case (empty case_values)
-            if (case_vals.empty()) {
-                has_default_case = true;
-            }
+            if (is_range_case) {
+                // Range-based case (>= 0x80, < 0x80, etc.)
+                const ir::expr* range_bound_ptr = case_item.range_bound.has_value()
+                    ? &case_item.range_bound.value() : nullptr;
+                emit_choice_case_start_range(case_item.selector_mode, range_bound_ptr, &case_item.case_field);
+            } else {
+                // Exact match case
+                std::vector<const ir::expr*> case_vals;
+                for (const auto& val : case_item.case_values) {
+                    case_vals.push_back(&val);
+                }
 
-            emit_choice_case_start(case_vals, &case_item.case_field);
+                // Check if this is a default case (empty case_values and not a range case)
+                if (case_vals.empty()) {
+                    has_default_case = true;
+                }
+
+                emit_choice_case_start(case_vals, &case_item.case_field);
+            }
 
             // For inline discriminator choices, restore position in these cases:
             // - Anonymous block cases: struct needs to re-read discriminator as first field
             // - Default cases: discriminator is part of the data (not consumed)
-            bool is_default_case = case_vals.empty();
+            bool is_default_case = case_item.case_values.empty() &&
+                                   case_item.selector_mode == ir::case_selector_mode::exact;
             if (is_inline_discriminator && (case_item.is_anonymous_block || is_default_case)) {
                 if (case_item.is_anonymous_block) {
                     emit_comment("Restore position for inline struct to read from discriminator");
@@ -466,7 +478,9 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             case_index++;
         }
 
-        // Only emit error handling if there's no default case
+        // Only emit error handling if there's no default case and no range cases
+        // (Range cases can potentially match any value, so no "else" error needed
+        // unless we want to be strict about coverage)
         if (!has_default_case) {
             // Add else clause for invalid selector
             emit_else();
@@ -570,22 +584,34 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
         size_t case_index = 0;
         bool has_default_case = false;
         for (const auto& case_item : choice_def.cases) {
-            std::vector<const ir::expr*> case_vals;
-            for (const auto& val : case_item.case_values) {
-                case_vals.push_back(&val);
-            }
+            // Check if this is a range-based case
+            bool is_range_case = case_item.selector_mode != ir::case_selector_mode::exact;
 
-            // Check if this is a default case (empty case_values)
-            if (case_vals.empty()) {
-                has_default_case = true;
-            }
+            if (is_range_case) {
+                // Range-based case (>= 0x80, < 0x80, etc.)
+                const ir::expr* range_bound_ptr = case_item.range_bound.has_value()
+                    ? &case_item.range_bound.value() : nullptr;
+                emit_choice_case_start_range(case_item.selector_mode, range_bound_ptr, &case_item.case_field);
+            } else {
+                // Exact match case
+                std::vector<const ir::expr*> case_vals;
+                for (const auto& val : case_item.case_values) {
+                    case_vals.push_back(&val);
+                }
 
-            emit_choice_case_start(case_vals, &case_item.case_field);
+                // Check if this is a default case (empty case_values and not a range case)
+                if (case_vals.empty()) {
+                    has_default_case = true;
+                }
+
+                emit_choice_case_start(case_vals, &case_item.case_field);
+            }
 
             // For inline discriminator choices, restore position in these cases:
             // - Anonymous block cases: struct needs to re-read discriminator as first field
             // - Default cases: discriminator is part of the data (not consumed)
-            bool is_default_case = case_vals.empty();
+            bool is_default_case = case_item.case_values.empty() &&
+                                   case_item.selector_mode == ir::case_selector_mode::exact;
             if (is_inline_discriminator && (case_item.is_anonymous_block || is_default_case)) {
                 if (case_item.is_anonymous_block) {
                     emit_comment("Restore position for inline struct to read from discriminator");
@@ -612,7 +638,7 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             case_index++;
         }
 
-        // Only emit error handling if there's no default case
+        // Only emit error handling if there's no default case and no range cases
         if (!has_default_case) {
             // Add else clause for invalid selector
             emit_else();
@@ -673,6 +699,12 @@ void CommandBuilder::emit_choice_end() {
 void CommandBuilder::emit_choice_case_start(std::vector<const ir::expr*> case_values,
                                             const ir::field* case_field) {
     commands_.push_back(std::make_unique<StartChoiceCaseCommand>(std::move(case_values), case_field));
+}
+
+void CommandBuilder::emit_choice_case_start_range(ir::case_selector_mode mode,
+                                                   const ir::expr* range_bound,
+                                                   const ir::field* case_field) {
+    commands_.push_back(std::make_unique<StartChoiceCaseCommand>(mode, range_bound, case_field));
 }
 
 void CommandBuilder::emit_choice_case_end() {

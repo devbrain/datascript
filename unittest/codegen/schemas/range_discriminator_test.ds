@@ -1,0 +1,74 @@
+/**
+ * Test schema for range-based discriminators in choice types.
+ *
+ * This tests the NE (16-bit Windows) dialog control class pattern
+ * where values >= 0x80 are predefined classes and < 0x80 are strings.
+ */
+package range_discriminator_test;
+
+/** Predefined control classes (0x80-0x85) */
+enum uint8 PredefinedClass {
+    Button = 0x80,
+    Edit = 0x81,
+    Static = 0x82,
+    ListBox = 0x83,
+    ScrollBar = 0x84,
+    ComboBox = 0x85
+};
+
+/** Custom class name (length-prefixed string) */
+struct CustomClass {
+    uint8 length;
+    uint8 chars[length];
+};
+
+/** Control class identifier using range-based discriminator
+ *  - Values >= 0x80 are predefined class IDs
+ *  - Values < 0x80 are string lengths (custom class names)
+ */
+choice ControlClass : uint8 {
+    case >= 0x80:
+        uint8 class_id;  // Predefined class ID (Button, Edit, etc.)
+    default:
+        CustomClass custom_class;  // Length-prefixed custom class name
+};
+
+/** Test with inline struct syntax for range cases */
+choice ControlClassInline : uint8 {
+    case >= 0x80:
+        { uint8 class_id; } predefined;
+    default:
+        { uint8 length; uint8 chars[length]; } custom;
+};
+
+/** Test with multiple range conditions */
+choice MultiRange : uint8 {
+    case >= 0xC0:
+        uint8 high_value;    // 192-255
+    case >= 0x80:
+        uint8 medium_value;  // 128-191
+    default:
+        uint8 low_value;     // 0-127
+};
+
+/** Test with less-than operator */
+choice LessThanRange : uint8 {
+    case < 0x80:
+        uint8 low_byte;
+    default:
+        uint8 high_byte;
+};
+
+/** Test with not-equal operator */
+choice NotEqual : uint8 {
+    case != 0x00:
+        uint8 non_null_value;
+    default:
+        uint8 null_marker;
+};
+
+/** Message container to test external discriminator with range */
+struct RangeMessage {
+    uint8 class_byte;
+    ControlClass content on class_byte;
+};

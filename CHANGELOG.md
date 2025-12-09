@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Range-Based Discriminators in Choice Types** (December 9, 2025)
+  - New feature: Choice cases can now use comparison operators to match value ranges
+  - **Syntax**: `case >= 0x80:`, `case < 0x80:`, `case > value:`, `case <= value:`, `case != value:`
+  - **Use case**: Binary formats where a discriminator's value range determines the data type
+  - **Example**: Windows NE dialog control classes:
+    - `>= 0x80`: Predefined class ID (Button=0x80, Edit=0x81, etc.)
+    - `< 0x80`: String length for custom class name
+  ```datascript
+  choice ControlClass : uint8 {
+      case >= 0x80:
+          uint8 predefined_class;
+      default:
+          string custom_class;
+  }
+  ```
+  - **Implementation details**:
+    - AST: Added `case_selector_kind` enum with values: `exact`, `range_ge`, `range_gt`, `range_le`, `range_lt`, `range_ne`
+    - AST: Added `range_bound` field to `choice_case` for the comparison value
+    - IR: Added `case_selector_mode` enum matching AST selector kinds
+    - Parser: 5 new grammar rules for range case clauses
+    - Code generation: Range comparisons generate `if (selector_value >= (value))` patterns
+  - **Ordering**: Range cases are evaluated in declaration order; use more specific ranges first
+  - **Mixing**: Can combine exact matches (`case 0xFF:`) with range matches (`case >= 0x80:`)
+  - **Inline struct support**: Works with inline struct syntax: `case >= 0x80: { ... } data;`
+  - Files: `ast.hh`, `ir.hh`, `datascript_parser.y`, `ast_builder.cc`, `ir_builder.cc`, `command_builder.cc`, `cpp_renderer.cc`
+  - 11 comprehensive tests covering all operators and combinations
+  - All 978 tests pass with 4533 assertions
+
 ### Fixed
 - **Alignment Directive Uses Absolute Memory Addresses Instead of Relative Offsets** (December 9, 2025)
   - Fixed `align(N)` directive using absolute memory addresses instead of relative offsets from buffer start

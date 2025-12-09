@@ -465,6 +465,79 @@ choice FileFormat : uint32 {
 
 The discriminator type is explicitly declared as `uint32` to accommodate case values that exceed 65535.
 
+#### Range-Based Discriminators
+
+Choice cases can use comparison operators to match against ranges of values instead of exact equality. This is commonly used in binary formats where a discriminator byte's value range determines the type of data that follows:
+
+```datascript
+// NE dialog control class format
+// Values >= 0x80 are predefined class IDs
+// Values < 0x80 are string lengths for custom class names
+choice ControlClass : uint8 {
+    case >= 0x80:
+        uint8 predefined_class;  // Button=0x80, Edit=0x81, etc.
+    default:
+        string custom_class;     // Custom class name
+}
+```
+
+**Supported range operators:**
+
+| Operator | Meaning | Example |
+|----------|---------|---------|
+| `>=` | Greater than or equal | `case >= 0x80:` matches 128-255 |
+| `>` | Greater than | `case > 0x7F:` matches 128-255 |
+| `<=` | Less than or equal | `case <= 0x7F:` matches 0-127 |
+| `<` | Less than | `case < 0x80:` matches 0-127 |
+| `!=` | Not equal | `case != 0x00:` matches any non-zero value |
+
+**Multiple range cases:**
+
+Range cases are evaluated in declaration order. Use more specific ranges first:
+
+```datascript
+choice MultiRange : uint8 {
+    case >= 0xC0:
+        uint8 high_range;     // 192-255
+    case >= 0x80:
+        uint8 medium_range;   // 128-191
+    default:
+        uint8 low_range;      // 0-127
+}
+```
+
+**Mixing exact and range cases:**
+
+You can combine exact value matches with range matches:
+
+```datascript
+choice MixedSelector : uint8 {
+    case 0xFF:
+        uint8 special_marker;  // Exact match first
+    case >= 0x80:
+        uint8 high_value;      // Range for remaining high values
+    default:
+        uint8 low_value;       // Everything else
+}
+```
+
+**Use with inline struct syntax:**
+
+Range cases work with inline struct syntax for complex payloads:
+
+```datascript
+choice ControlData : uint8 {
+    case >= 0x80: {
+        uint8 class_id;
+        uint16 style;
+    } predefined;
+    default: {
+        uint8 name_length;
+        uint8 name_chars[name_length];
+    } custom;
+}
+```
+
 ### Subtypes
 
 Subtypes are constrained base types that validate values:

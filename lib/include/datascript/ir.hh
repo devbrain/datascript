@@ -410,6 +410,16 @@ struct union_def {
     std::string documentation;
 };
 
+// Selector mode for range-based discriminators in choice cases
+enum class case_selector_mode {
+    exact,   // case 0xFF:    (selector == value)
+    ge,      // case >= 0x80: (selector >= value)
+    gt,      // case > 0x7F:  (selector > value)
+    le,      // case <= 0x7F: (selector <= value)
+    lt,      // case < 0x80:  (selector < value)
+    ne       // case != 0x00: (selector != value)
+};
+
 struct choice_def {
     std::string name;
     source_location source;
@@ -428,7 +438,9 @@ struct choice_def {
     std::optional<type_ref> inferred_discriminator_type;
 
     struct case_def {
-        std::vector<expr> case_values;
+        std::vector<expr> case_values;  // For exact matches (can have multiple: case 1: case 2:)
+        case_selector_mode selector_mode = case_selector_mode::exact;  // Comparison mode
+        std::optional<expr> range_bound;  // For range selectors (>= 0x80, etc.)
         field case_field;
         source_location source;
         bool is_anonymous_block = false;  // true if defined as { items... } name; (inline struct case)

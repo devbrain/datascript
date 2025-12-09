@@ -69,6 +69,18 @@ endianness ast_endianness_to_ir(ast::endian e) {
     }
 }
 
+case_selector_mode ast_selector_kind_to_ir(ast::case_selector_kind kind) {
+    switch (kind) {
+        case ast::case_selector_kind::exact:    return case_selector_mode::exact;
+        case ast::case_selector_kind::range_ge: return case_selector_mode::ge;
+        case ast::case_selector_kind::range_gt: return case_selector_mode::gt;
+        case ast::case_selector_kind::range_le: return case_selector_mode::le;
+        case ast::case_selector_kind::range_lt: return case_selector_mode::lt;
+        case ast::case_selector_kind::range_ne: return case_selector_mode::ne;
+        default: return case_selector_mode::exact;
+    }
+}
+
 // ============================================================================
 // Size and Alignment Calculation (Forward declarations - defined after type_index_maps)
 // ============================================================================
@@ -1703,9 +1715,17 @@ choice_def build_choice(const ast::choice_def& ast_choice,
         choice_def::case_def case_result;
         case_result.source = source_location::from_ast(ast_case.pos);
 
-        // Build case values (expressions that match this case)
+        // Set selector mode (exact match vs range comparison)
+        case_result.selector_mode = ast_selector_kind_to_ir(ast_case.selector_kind);
+
+        // Build case values (expressions that match this case) - for exact matches
         for (const auto& case_expr : ast_case.case_exprs) {
             case_result.case_values.push_back(build_expr(case_expr, analyzed, mono_ctx));
+        }
+
+        // Build range bound expression - for range-based selectors (>= 0x80, etc.)
+        if (ast_case.range_bound.has_value()) {
+            case_result.range_bound = build_expr(ast_case.range_bound.value(), analyzed, mono_ctx);
         }
 
         // Build the field for this case
