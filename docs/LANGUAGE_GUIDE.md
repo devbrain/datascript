@@ -419,10 +419,34 @@ struct ResourceDirectory {
 **How it works:**
 
 1. You explicitly declare the discriminator type (e.g., `: uint16`, `: uint32`)
-2. The generated code **peeks** at the first bytes without consuming them
-3. Tests the peeked value against case expressions
-4. Consumes bytes for the matching case
+2. The generated code reads the discriminator value to determine which case to execute
+3. Tests the value against case expressions
+4. **Position handling differs by case type:**
+   - **Explicit cases** (e.g., `case 0xFFFF`): discriminator is consumed, field reads AFTER discriminator
+   - **Default case**: discriminator is NOT consumed, field reads FROM discriminator position
+   - **Anonymous block cases**: position restored, struct re-reads discriminator as first field
 5. All case values are validated to fit within the declared type's range
+
+**Default case semantics:**
+
+In the default case, the discriminator byte(s) are considered part of the data because the value didn't match any known case. This is essential for formats like Windows resource identifiers:
+
+```datascript
+// NE dialog control text format
+choice ControlText : uint8 {
+    case 0xFF:
+        uint16 ordinal;    // 0xFF consumed, ordinal reads next 2 bytes
+    default:
+        string text;       // First byte is part of string, NOT consumed as discriminator
+}
+```
+
+With input `"Hello\0"` (bytes: 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0x00):
+- Discriminator value is 0x48 ('H'), which is NOT 0xFF
+- Default case selected, position restored to byte 0
+- String reads from position 0: `text = "Hello"` (correct!)
+
+Without this behavior, `text` would incorrectly be `"ello"` (missing 'H').
 
 **Example with larger discriminator:**
 

@@ -1149,20 +1149,25 @@ choice ResourceIdentifier {
 }
 ```
 
-Generates a non-templated `read()` method with peek-test-dispatch:
+Generates a non-templated `read()` method with save-position-dispatch:
 
 ```cpp
 static ResourceIdentifier read(const uint8_t*& data, const uint8_t* end) {
-    // Peek at inline discriminator
-    uint16_t selector_value = peek_uint16_le(data, end);
+    // Save position before reading inline discriminator
+    const uint8_t* saved_data_pos = data;
+    // Read inline discriminator
+    uint16_t selector_value = read_uint16_le(data, end);
     ResourceIdentifier obj;
     if (selector_value == (0xFFFF)) {
+        // Explicit case: discriminator consumed, continue reading
         uint16_t marker;
         marker = read_uint16_le(data, end);
         uint16_t ordinal;
         ordinal = read_uint16_le(data, end);
         obj.data = Case0_ordinal{marker, ordinal};
     } else {
+        // Default case: restore position - discriminator is part of data
+        data = saved_data_pos;
         std::u16string name;
         name = read_u16string_le(data, end);
         obj.data = Case1_name{name};
@@ -1174,8 +1179,30 @@ static ResourceIdentifier read(const uint8_t*& data, const uint8_t* end) {
 **Key differences:**
 - No template parameter
 - No selector_value parameter
-- Peek helpers (`peek_uint8`, `peek_uint16_le`, etc.) read without advancing pointer
+- Position saved before reading discriminator
+- **Default case restores position** - discriminator becomes part of the data
+- **Explicit cases keep position** - discriminator is consumed
 - Discriminator type inferred from case values (uint8/16/32/64)
+
+**Default case semantics:**
+
+For inline discriminator choices with a default case, the discriminator byte(s) are NOT consumed
+in the default case. This is essential for formats where the discriminator value is "unknown"
+and should be treated as regular data:
+
+```datascript
+// Windows NE dialog control text
+choice ControlText : uint8 {
+    case 0xFF:
+        uint16 ordinal;    // 0xFF consumed, ordinal reads next bytes
+    default:
+        string text;       // First byte is part of string (NOT consumed)
+}
+```
+
+With input `"Hello\0"`:
+- Discriminator = 0x48 ('H'), not 0xFF → default case
+- Position restored → `text = "Hello"` (first byte included)
 
 ### Functions (Methods)
 

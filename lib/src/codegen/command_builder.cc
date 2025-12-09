@@ -349,13 +349,13 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
         bool is_inline_discriminator = !choice_def.selector.has_value() &&
                                        choice_def.inferred_discriminator_type.has_value();
 
-        // Check if any case is an anonymous block (inline struct syntax)
-        // For anonymous block cases, we need to restore position so the struct can re-read
-        // the discriminator as its first field
-        bool has_any_anonymous_block_safe = false;
+        // Check if any case is an anonymous block OR a default case (for position restore)
+        // - Anonymous block cases need to re-read the discriminator as their first field
+        // - Default cases need to NOT consume the discriminator (it's part of the data)
+        bool needs_position_save_safe = false;
         for (const auto& case_item : choice_def.cases) {
-            if (case_item.is_anonymous_block) {
-                has_any_anonymous_block_safe = true;
+            if (case_item.is_anonymous_block || case_item.case_values.empty()) {
+                needs_position_save_safe = true;
                 break;
             }
         }
@@ -400,9 +400,10 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             end_arg->ref_name = "end";
             read_call.arguments.push_back(std::move(end_arg));
 
-            // Only save position if there are anonymous block cases
-            // Anonymous blocks (inline struct syntax) need to re-read the discriminator
-            if (has_any_anonymous_block_safe) {
+            // Save position if there are anonymous block cases OR default cases
+            // - Anonymous blocks need to re-read the discriminator
+            // - Default cases need the discriminator as part of the data (not consumed)
+            if (needs_position_save_safe) {
                 emit_comment("Save position before reading inline discriminator");
                 commands_.push_back(std::make_unique<SavePositionCommand>("saved_data_pos"));
             }
@@ -435,10 +436,16 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
 
             emit_choice_case_start(case_vals, &case_item.case_field);
 
-            // For anonymous block cases with inline discriminator, restore position
-            // so the struct can re-read the discriminator as its first field
-            if (is_inline_discriminator && case_item.is_anonymous_block) {
-                emit_comment("Restore position for inline struct to read from discriminator");
+            // For inline discriminator choices, restore position in these cases:
+            // - Anonymous block cases: struct needs to re-read discriminator as first field
+            // - Default cases: discriminator is part of the data (not consumed)
+            bool is_default_case = case_vals.empty();
+            if (is_inline_discriminator && (case_item.is_anonymous_block || is_default_case)) {
+                if (case_item.is_anonymous_block) {
+                    emit_comment("Restore position for inline struct to read from discriminator");
+                } else {
+                    emit_comment("Restore position for default case - discriminator is part of data");
+                }
                 commands_.push_back(std::make_unique<RestorePositionCommand>("saved_data_pos"));
             }
 
@@ -489,13 +496,13 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
         bool is_inline_discriminator = !choice_def.selector.has_value() &&
                                        choice_def.inferred_discriminator_type.has_value();
 
-        // Check if any case is an anonymous block (inline struct syntax)
-        // For anonymous block cases, we need to restore position so the struct can re-read
-        // the discriminator as its first field
-        bool has_any_anonymous_block = false;
+        // Check if any case is an anonymous block OR a default case (for position restore)
+        // - Anonymous block cases need to re-read the discriminator as their first field
+        // - Default cases need to NOT consume the discriminator (it's part of the data)
+        bool needs_position_save = false;
         for (const auto& case_item : choice_def.cases) {
-            if (case_item.is_anonymous_block) {
-                has_any_anonymous_block = true;
+            if (case_item.is_anonymous_block || case_item.case_values.empty()) {
+                needs_position_save = true;
                 break;
             }
         }
@@ -540,9 +547,10 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             end_arg->ref_name = "end";
             read_call.arguments.push_back(std::move(end_arg));
 
-            // Only save position if there are anonymous block cases
-            // Anonymous blocks (inline struct syntax) need to re-read the discriminator
-            if (has_any_anonymous_block) {
+            // Save position if there are anonymous block cases OR default cases
+            // - Anonymous blocks need to re-read the discriminator
+            // - Default cases need the discriminator as part of the data (not consumed)
+            if (needs_position_save) {
                 emit_comment("Save position before reading inline discriminator");
                 commands_.push_back(std::make_unique<SavePositionCommand>("saved_data_pos"));
             }
@@ -574,10 +582,16 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
 
             emit_choice_case_start(case_vals, &case_item.case_field);
 
-            // For anonymous block cases with inline discriminator, restore position
-            // so the struct can re-read the discriminator as its first field
-            if (is_inline_discriminator && case_item.is_anonymous_block) {
-                emit_comment("Restore position for inline struct to read from discriminator");
+            // For inline discriminator choices, restore position in these cases:
+            // - Anonymous block cases: struct needs to re-read discriminator as first field
+            // - Default cases: discriminator is part of the data (not consumed)
+            bool is_default_case = case_vals.empty();
+            if (is_inline_discriminator && (case_item.is_anonymous_block || is_default_case)) {
+                if (case_item.is_anonymous_block) {
+                    emit_comment("Restore position for inline struct to read from discriminator");
+                } else {
+                    emit_comment("Restore position for default case - discriminator is part of data");
+                }
                 commands_.push_back(std::make_unique<RestorePositionCommand>("saved_data_pos"));
             }
 

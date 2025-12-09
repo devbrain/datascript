@@ -57,12 +57,11 @@ std::vector<uint8_t> create_id_mixed_regular() {
     };
 }
 
-// IDMixedChoice: default case - NOT inline struct
-// Discriminator is consumed, fallback reads from next position
+// IDMixedChoice: default case - position IS restored (discriminator is part of data)
+// With the fix: discriminator is NOT consumed for default case
 std::vector<uint8_t> create_id_mixed_default() {
     return std::vector<uint8_t>{
-        0x99, 0x00,  // discriminator = 153 (default case)
-        0x42, 0x00   // fallback = 66 (little-endian)
+        0x99, 0x00   // discriminator = 153 (default case), also fallback value
     };
 }
 
@@ -82,11 +81,11 @@ std::vector<uint8_t> create_id_simple_case2() {
     };
 }
 
-// IDSimpleInline: default case - regular field (no position restore)
+// IDSimpleInline: default case - position IS restored (discriminator is part of data)
+// With the fix: discriminator is NOT consumed for default case
 std::vector<uint8_t> create_id_simple_default() {
     return std::vector<uint8_t>{
-        0x99,  // discriminator = 153 (default case)
-        0x42   // value_default = 66
+        0x99   // discriminator = 153 (default case), also value_default
     };
 }
 
@@ -153,16 +152,17 @@ TEST_CASE("ID Mixed choice - regular case (not inline struct)") {
     CHECK(regular->value == 0x12345678);
 }
 
-TEST_CASE("ID Mixed choice - default case (not inline struct)") {
+TEST_CASE("ID Mixed choice - default case (position restored)") {
     auto data = create_id_mixed_default();
     IDMixedContainer container = parse_IDMixedContainer(data);
 
-    // Should be default case (regular field, not inline struct)
+    // Should be default case (regular field)
     auto* fallback = container.value.as_fallback();
     REQUIRE(fallback != nullptr);
 
-    // Key test: fallback reads AFTER discriminator (not re-reading it)
-    CHECK(fallback->value == 66);
+    // With the fix: fallback reads FROM discriminator position (not after)
+    // discriminator = 153 (0x0099) is also fallback value
+    CHECK(fallback->value == 153);
 }
 
 TEST_CASE("ID Simple inline - case 1 (no inline struct)") {
@@ -189,7 +189,7 @@ TEST_CASE("ID Simple inline - case 2 (no inline struct)") {
     CHECK(case2->value == 0x1234);
 }
 
-TEST_CASE("ID Simple inline - default case (no inline struct)") {
+TEST_CASE("ID Simple inline - default case (position restored)") {
     auto data = create_id_simple_default();
     IDSimpleContainer container = parse_IDSimpleContainer(data);
 
@@ -197,8 +197,9 @@ TEST_CASE("ID Simple inline - default case (no inline struct)") {
     auto* def = container.choice_field.as_value_default();
     REQUIRE(def != nullptr);
 
-    // value_default reads AFTER discriminator
-    CHECK(def->value == 66);
+    // With the fix: value_default reads FROM discriminator position (not after)
+    // discriminator = 153 (0x99) is also value_default
+    CHECK(def->value == 153);
 }
 
 // ============================================================================
@@ -280,15 +281,15 @@ std::vector<uint8_t> create_named_ordinal() {
 }
 
 // NamedStructChoice with StringData (named struct)
-// Data: [0x05, 0x04, 'T', 'e', 's', 't']
-// - discriminator = 0x05 (consumed, triggers default case)
-// - length = 0x04 (NOT 0x05 - reads AFTER discriminator)
-// - chars = "Test"
+// With the fix: position IS restored for default case (discriminator is part of data)
+// Data: [0x05, 'H', 'e', 'l', 'l', 'o']
+// - discriminator = 0x05 (default case), position restored to 0
+// - length = 0x05 (reads from position 0 = discriminator value)
+// - chars = ['H', 'e', 'l', 'l', 'o'] (5 bytes from position 1)
 std::vector<uint8_t> create_named_string() {
     return std::vector<uint8_t>{
-        0x05,              // discriminator = 5 (consumed, triggers default)
-        0x04,              // length = 4 (reads AFTER discriminator)
-        'T', 'e', 's', 't' // chars[4]
+        0x05,                        // discriminator = 5 (default), also length
+        'H', 'e', 'l', 'l', 'o'      // chars[5] (read from position 1)
     };
 }
 
@@ -331,7 +332,7 @@ TEST_CASE("Named struct case - ordinal (discriminator consumed)") {
     CHECK(ordinal->value.id_value == 66);
 }
 
-TEST_CASE("Named struct case - string (discriminator consumed)") {
+TEST_CASE("Named struct case - string (position restored for default)") {
     auto data = create_named_string();
     NamedStructContainer container = parse_NamedStructContainer(data);
 
@@ -339,14 +340,15 @@ TEST_CASE("Named struct case - string (discriminator consumed)") {
     auto* str = container.value.as_str();
     REQUIRE(str != nullptr);
 
-    // Key test: length should be 4, NOT 5
-    // If position was incorrectly restored, length would be 5 (the discriminator)
-    CHECK(str->value.length == 4);
-    REQUIRE(str->value.chars.size() == 4);
-    CHECK(str->value.chars[0] == 'T');
+    // With the fix: length = 5 (the discriminator value, since position is restored)
+    // chars reads 5 bytes from position 1 = ['H', 'e', 'l', 'l', 'o']
+    CHECK(str->value.length == 5);
+    REQUIRE(str->value.chars.size() == 5);
+    CHECK(str->value.chars[0] == 'H');
     CHECK(str->value.chars[1] == 'e');
-    CHECK(str->value.chars[2] == 's');
-    CHECK(str->value.chars[3] == 't');
+    CHECK(str->value.chars[2] == 'l');
+    CHECK(str->value.chars[3] == 'l');
+    CHECK(str->value.chars[4] == 'o');
 }
 
 TEST_CASE("Mixed choice - anonymous block case (position restored)") {

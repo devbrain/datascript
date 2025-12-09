@@ -84,10 +84,12 @@ std::vector<uint8_t> create_status_error() {
     };
 }
 
+// With the fix: discriminator is NOT consumed for default case
+// unknown_status reads from position 0 (includes discriminator)
 std::vector<uint8_t> create_status_unknown() {
     return std::vector<uint8_t>{
-        0xF4, 0x01,              // status code = 500 (default case)
-        0x05, 0x00, 0x00, 0x00   // unknown_status = 5 (uint32 little endian)
+        0xF4, 0x01,  // status code = 500 (default case), also part of unknown_status
+        0x00, 0x00   // completes uint32: 0x000001F4 = 500
     };
 }
 
@@ -194,7 +196,9 @@ TEST_CASE("Multiple case values - unknown (default)") {
 
     auto* unknown_case = resp.status.as_unknown_status();
     REQUIRE(unknown_case != nullptr);
-    CHECK(unknown_case->value == 5);
+    // With the fix: unknown_status reads from position 0 (includes discriminator)
+    // Data: [0xF4, 0x01, 0x00, 0x00] = 0x000001F4 = 500
+    CHECK(unknown_case->value == 500);
 }
 
 // ============================================================================

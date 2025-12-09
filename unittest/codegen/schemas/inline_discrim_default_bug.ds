@@ -1,0 +1,62 @@
+/**
+ * Test schema for inline discriminator default case bug.
+ *
+ * Bug: When using inline discriminator choices, the default case should NOT
+ * consume the discriminator byte because it's part of the actual data.
+ *
+ * Example: For Windows NE dialog control text:
+ *   - 0xFF + ordinal: discriminator 0xFF is consumed, then ordinal is read
+ *   - Otherwise: string starting FROM the discriminator byte position
+ *
+ * Binary: 48 65 6C 6C 6F 00 should parse as "Hello" (0x48='H' is first byte)
+ * But currently parses as "ello" (0x48 consumed as discriminator, string starts at 0x65='e')
+ */
+
+/**
+ * Main test case: inline discriminator with string default.
+ * The default case string should include the discriminator byte.
+ */
+choice NEControlText : uint8 {
+    case 0xFF:
+        uint16 ordinal;
+    default:
+        string text;  // Should start from discriminator position (include first byte)
+};
+
+struct NEControlItem {
+    NEControlText control_text;
+};
+
+/**
+ * Similar case with uint16 discriminator (Windows PE resource name/id).
+ * 0xFFFF + ordinal, or Unicode string starting from discriminator position.
+ */
+choice PEResourceNameOrId : uint16 {
+    case 0xFFFF:
+        uint16 ordinal;
+    default:
+        // In default case, the uint16 discriminator is part of the first character
+        // For simplicity, we'll just test with a uint16 field
+        uint16 first_char;
+};
+
+struct PEResourceRef {
+    PEResourceNameOrId name_or_id;
+};
+
+/**
+ * Control case: explicit case with simple field.
+ * Discriminator SHOULD be consumed (not restored) for explicit cases.
+ */
+choice ExplicitCaseControl : uint8 {
+    case 0xFF:
+        uint16 ordinal;
+    case 0x01:
+        uint32 value_data;  // Should read AFTER discriminator
+    default:
+        string text;  // Should start FROM discriminator position
+};
+
+struct ExplicitCaseContainer {
+    ExplicitCaseControl value;
+};

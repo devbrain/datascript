@@ -65,6 +65,7 @@ set(LIBRARY_MODE_SCHEMAS
     library_mode_labels_alignment
     library_mode_conditionals
     library_mode_inline_discrim
+    inline_discrim_default_bug
 )
 
 # Create output directory for library mode generated headers
@@ -243,6 +244,7 @@ add_executable(datascript_unittest
         codegen/test_library_mode_labels_alignment.cc
         codegen/test_library_mode_conditionals.cc
         codegen/test_library_mode_inline_discrim.cc
+        codegen/test_inline_discrim_default_bug.cc
         codegen/test_choice_discriminator_e2e.cc
         codegen/test_choice_default_case_bug.cc
         codegen/test_inline_discriminator_peek.cc

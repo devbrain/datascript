@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Inline Discriminator Default Case Byte Consumption** (December 9, 2025)
+  - Fixed discriminator byte being incorrectly consumed in default case
+  - **Bug**: For inline discriminator choices, the default case consumed the discriminator byte, causing data misalignment
+  - **Example**: For `choice NEControlText : uint8 { case 0xFF: uint16 ordinal; default: string text; }`:
+    - Input `"Hello\0"` (0x48='H', 0x65='e', ...) was parsed as `text = "ello"` instead of `text = "Hello"`
+    - The 'H' (0x48) was consumed as discriminator but should be part of the string
+  - **Root Cause**: Default case didn't restore position after peeking discriminator
+  - **Fix**:
+    - Save position before reading inline discriminator when there's a default case
+    - Restore position for default case so field reads from discriminator position
+    - Discriminator byte becomes part of the default case's data
+  - **New behavior for inline discriminator choices**:
+    - Explicit cases (e.g., `case 0xFF`): discriminator is consumed, field reads AFTER discriminator
+    - Default case: discriminator is NOT consumed, field reads FROM discriminator position
+    - Anonymous block cases: position restored, struct re-reads discriminator as first field
+  - **Real-world impact**: Enables correct parsing of Windows NE/PE resource formats:
+    - NE dialog control text: `0xFF` + ordinal vs. null-terminated string starting with first byte
+    - PE resource name/ID: `0xFFFF` + ordinal vs. Unicode string starting with first uint16
+  - Files: `command_builder.cc`
+  - 10 new E2E tests, 4 existing tests updated
+
 - **Inline Discriminator Position Restore for Anonymous Block Cases** (December 9, 2025)
   - Fixed byte misalignment when using inline struct syntax in choice cases
   - **Bug**: For `choice Foo : uint8 { case 0xFF: { uint8 marker; ... } data; }`, the discriminator byte was consumed but not available to the inline struct's first field
