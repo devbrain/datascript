@@ -431,6 +431,7 @@ struct choice_def {
         std::vector<expr> case_values;
         field case_field;
         source_location source;
+        bool is_anonymous_block = false;  // true if defined as { items... } name; (inline struct case)
     };
     std::vector<case_def> cases;
 

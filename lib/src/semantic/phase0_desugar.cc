@@ -250,7 +250,10 @@ namespace {
                 // Replace items with a single field_def
                 choice_case.items.clear();
                 choice_case.items.push_back(std::move(replacement));
-                choice_case.is_anonymous_block = false;  // No longer an anonymous block
+                // Note: We preserve is_anonymous_block = true so code generation knows
+                // this case was originally an anonymous block. For inline discriminator choices,
+                // anonymous block cases need the read position restored so the generated struct
+                // can re-read the discriminator as its first field.
             }
         }
     }

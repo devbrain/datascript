@@ -8,13 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Inline Discriminator Position Restore for Anonymous Block Cases** (December 9, 2025)
+  - Fixed byte misalignment when using inline struct syntax in choice cases
+  - **Bug**: For `choice Foo : uint8 { case 0xFF: { uint8 marker; ... } data; }`, the discriminator byte was consumed but not available to the inline struct's first field
+  - **Symptoms**: `marker` would read the wrong byte (next byte after discriminator instead of discriminator itself)
+  - **Root Cause**: Inline discriminator choices consumed the discriminator but didn't restore position for anonymous block cases
+  - **Fix**:
+    - Added `is_anonymous_block` flag to IR `case_def`
+    - CommandBuilder saves position before reading discriminator when any case is anonymous block
+    - Position restored only for anonymous block cases (not regular field cases)
+    - Preserved flag in Phase 0 desugaring (was incorrectly reset to false)
+  - **Key distinction**:
+    - Anonymous block cases: `case 0xFF: { uint8 marker; } data;` → position restored, struct re-reads discriminator
+    - Regular field cases: `case 0xFF: uint16 value;` → position NOT restored, field reads after discriminator
+    - Named struct cases: `case 0xFF: SomeStruct data;` → position NOT restored, struct reads after discriminator
+  - Files: `ir.hh`, `ir_builder.cc`, `command_builder.cc`, `phase0_desugar.cc`
+  - Comprehensive E2E tests for both library mode and code generation patterns
+
+- **Multi-line Docstring Escaping in Library Mode** (December 9, 2025)
+  - Fixed invalid C++ string literals when docstrings contain newlines
+  - **Bug**: Multi-line docstrings were output directly without escaping, causing compilation errors
+  - **Symptoms**: Generated code had unterminated string literals across multiple lines
+  - **Fix**: Created `escape_cpp_string_literal()` utility in `cpp_string_utils.hh`
+  - Escapes: `\n`, `\r`, `\t`, `\\`, `\"`
+  - Applied to field documentation and struct documentation in metadata generation
+  - Centralized utility available for all C++ codegen components
+
 - **ODR Violation in Library Mode Conditional Tests** (December 9, 2025)
   - Fixed One Definition Rule violation causing test failures
   - **Bug**: Library mode tests defined `SimpleConditional` and `MultipleConditionals` in `namespace generated`, conflicting with E2E test definitions
   - **Symptoms**: Tests passed standalone but failed in test suite; wrong struct layout used at runtime
   - **Root Cause**: Both `test_e2e_conditionals.cc` and `test_library_mode_conditionals.cc` defined same-named structs with different fields in same namespace
   - **Fix**: Renamed library mode conditional structs with `LM` prefix (`LMSimpleConditional`, `LMMultipleConditionals`, etc.)
-  - All 929 tests now pass
+  - All 951 tests now pass (including new inline discriminator tests)
 
 ### Changed
 - **Cleaned Up Test Output** (December 9, 2025)
@@ -24,6 +50,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Test output now shows only failures, not misleading debug info
 
 ### Added
+- **Library Mode E2E Tests for Inline Discriminator Choices** (December 9, 2025)
+  - Comprehensive runtime tests for inline discriminator position restore behavior
+  - Schema: `library_mode_inline_discrim.ds` with 3 choice types and 6 container structs
+  - 18 test cases covering:
+    - Anonymous block cases (position restored): ordinal, string, special cases
+    - Regular field cases (position NOT restored): regular, default, simple cases
+    - Named struct cases (position NOT restored): verifies discriminator consumed correctly
+    - Mixed choices with both anonymous and named struct cases
+    - Byte count verification for all case types
+    - StructView introspection API
+  - Tests validate the key semantic distinction between case types
+  - All tests pass with zero memory leaks (valgrind verified)
+
+- **C++ String Utilities for Code Generation** (December 9, 2025)
+  - New header: `lib/include/datascript/codegen/cpp/cpp_string_utils.hh`
+  - `escape_cpp_string_literal()` function for safe string literal output
+  - Centralized utility for all C++ codegen components
+  - Handles newlines, carriage returns, tabs, backslashes, and quotes
+
 - **Inline Anonymous Structs for Choice Cases** (December 8, 2025)
   - Choice cases can now use inline struct syntax like unions
   - Syntax: `case 0xFFFF: { uint16 marker; uint16 ordinal; } data;`

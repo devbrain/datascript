@@ -53,17 +53,19 @@ std::vector<uint8_t> create_name_resource() {
 }
 
 std::vector<uint8_t> create_name_or_id_ordinal() {
+    // With the inline discriminator peek fix, the position is restored so the inline
+    // struct re-reads the discriminator as its first field (marker).
     return std::vector<uint8_t>{
-        0xFF,       // discriminator = 0xFF
-        0xFF,       // marker
+        0xFF,       // discriminator = 0xFF, also read as marker
         0x2A, 0x00  // id_value = 42
     };
 }
 
 std::vector<uint8_t> create_name_or_id_string() {
+    // With the inline discriminator peek fix, the position is restored so the inline
+    // struct re-reads the discriminator as its first field (length).
     return std::vector<uint8_t>{
-        0x04,              // discriminator = 4 (default case)
-        0x04,              // length = 4
+        0x04,              // discriminator = 4 (default case), also read as length = 4
         'T', 'e', 's', 't' // chars[4]
     };
 }

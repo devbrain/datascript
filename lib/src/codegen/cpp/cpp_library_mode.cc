@@ -11,6 +11,7 @@
 #include <datascript/codegen/cpp/cpp_renderer.hh>
 #include <datascript/codegen/cpp/cpp_helper_generator.hh>
 #include <datascript/codegen/cpp/cpp_writer_context.hh>
+#include <datascript/codegen/cpp/cpp_string_utils.hh>
 #include <datascript/command_builder.hh>
 #include <datascript/codegen.hh>
 #include <sstream>
@@ -694,7 +695,7 @@ void CppLibraryModeGenerator::generate_struct_metadata(
         out << "        \"" << field.name << "\",\n";
         out << "        \"" << renderer_.get_type_name(field.type) << "\",\n";
         if (!field.documentation.empty()) {
-            out << "        \"" << field.documentation << "\",\n";
+            out << "        \"" << escape_cpp_string_literal(field.documentation) << "\",\n";
         } else {
             out << "        nullptr,\n";
         }
@@ -731,7 +732,7 @@ void CppLibraryModeGenerator::generate_struct_metadata(
     out << "inline const StructMeta " << struct_name << "_meta = {\n";
     out << "    \"" << struct_name << "\",\n";
     if (!struct_def.documentation.empty()) {
-        out << "    \"" << struct_def.documentation << "\",\n";
+        out << "    \"" << escape_cpp_string_literal(struct_def.documentation) << "\",\n";
     } else {
         out << "    nullptr,\n";
     }

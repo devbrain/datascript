@@ -348,6 +348,18 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
         // For inline discriminator choices, read the discriminator value
         bool is_inline_discriminator = !choice_def.selector.has_value() &&
                                        choice_def.inferred_discriminator_type.has_value();
+
+        // Check if any case is an anonymous block (inline struct syntax)
+        // For anonymous block cases, we need to restore position so the struct can re-read
+        // the discriminator as its first field
+        bool has_any_anonymous_block_safe = false;
+        for (const auto& case_item : choice_def.cases) {
+            if (case_item.is_anonymous_block) {
+                has_any_anonymous_block_safe = true;
+                break;
+            }
+        }
+
         if (is_inline_discriminator) {
             // Generate read operation based on inferred type
             const auto& discrim_type = choice_def.inferred_discriminator_type.value();
@@ -388,7 +400,14 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             end_arg->ref_name = "end";
             read_call.arguments.push_back(std::move(end_arg));
 
-            // Add comment
+            // Only save position if there are anonymous block cases
+            // Anonymous blocks (inline struct syntax) need to re-read the discriminator
+            if (has_any_anonymous_block_safe) {
+                emit_comment("Save position before reading inline discriminator");
+                commands_.push_back(std::make_unique<SavePositionCommand>("saved_data_pos"));
+            }
+
+            // Add comment and read the discriminator
             emit_comment("Read inline discriminator");
 
             // Declare selector_value with read result
@@ -415,6 +434,13 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             }
 
             emit_choice_case_start(case_vals, &case_item.case_field);
+
+            // For anonymous block cases with inline discriminator, restore position
+            // so the struct can re-read the discriminator as its first field
+            if (is_inline_discriminator && case_item.is_anonymous_block) {
+                emit_comment("Restore position for inline struct to read from discriminator");
+                commands_.push_back(std::make_unique<RestorePositionCommand>("saved_data_pos"));
+            }
 
             // Declare local variable for the field
             emit_variable_declaration(case_item.case_field.name, &case_item.case_field.type);
@@ -462,6 +488,18 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
         // For inline discriminator choices, read the discriminator value
         bool is_inline_discriminator = !choice_def.selector.has_value() &&
                                        choice_def.inferred_discriminator_type.has_value();
+
+        // Check if any case is an anonymous block (inline struct syntax)
+        // For anonymous block cases, we need to restore position so the struct can re-read
+        // the discriminator as its first field
+        bool has_any_anonymous_block = false;
+        for (const auto& case_item : choice_def.cases) {
+            if (case_item.is_anonymous_block) {
+                has_any_anonymous_block = true;
+                break;
+            }
+        }
+
         if (is_inline_discriminator) {
             // Generate read operation based on inferred type
             const auto& discrim_type = choice_def.inferred_discriminator_type.value();
@@ -502,7 +540,14 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             end_arg->ref_name = "end";
             read_call.arguments.push_back(std::move(end_arg));
 
-            // Add comment
+            // Only save position if there are anonymous block cases
+            // Anonymous blocks (inline struct syntax) need to re-read the discriminator
+            if (has_any_anonymous_block) {
+                emit_comment("Save position before reading inline discriminator");
+                commands_.push_back(std::make_unique<SavePositionCommand>("saved_data_pos"));
+            }
+
+            // Add comment and read the discriminator
             emit_comment("Read inline discriminator");
 
             // Declare selector_value with read result
@@ -528,6 +573,13 @@ std::vector<CommandPtr> CommandBuilder::build_choice_declaration(
             }
 
             emit_choice_case_start(case_vals, &case_item.case_field);
+
+            // For anonymous block cases with inline discriminator, restore position
+            // so the struct can re-read the discriminator as its first field
+            if (is_inline_discriminator && case_item.is_anonymous_block) {
+                emit_comment("Restore position for inline struct to read from discriminator");
+                commands_.push_back(std::make_unique<RestorePositionCommand>("saved_data_pos"));
+            }
 
             // Declare local variable for the field
             emit_variable_declaration(case_item.case_field.name, &case_item.case_field.type);

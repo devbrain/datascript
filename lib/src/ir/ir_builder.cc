@@ -1715,6 +1715,12 @@ choice_def build_choice(const ast::choice_def& ast_choice,
             case_result.case_field = build_field(field_def, analyzed, index_maps, mono_ctx);
         }
 
+        // Copy the is_anonymous_block flag from AST to IR
+        // This is needed to know if the case was defined with inline struct syntax { ... } name;
+        // For inline struct cases with inline discriminators, we need to restore the read position
+        // so the struct can re-read the discriminator as its first field
+        case_result.is_anonymous_block = ast_case.is_anonymous_block;
+
         result.cases.push_back(std::move(case_result));
     }
 
