@@ -1,0 +1,47 @@
+/**
+ * Test schema for inline discriminator choice bug.
+ *
+ * The bug: When using inline discriminator choices with inline struct cases,
+ * the discriminator byte is consumed but not passed to the case structures.
+ * This causes byte misalignment when case structures expect to re-read
+ * the discriminator value.
+ */
+
+/**
+ * Test case 1: Inline discriminator with inline struct case.
+ * The inline struct includes the discriminator value as its first field.
+ */
+choice NameOrId : uint8 {
+    case 0xFF: {
+        uint8 marker;    // Should be 0xFF (the discriminator value)
+        uint16 ordinal;
+    } ordinal_value;
+    default: {
+        uint8 length;    // Should be the discriminator value (which is also the length)
+        uint8 chars[length];
+    } string_value;
+};
+
+/**
+ * Test case 2: Simple inline discriminator with regular fields.
+ * This should work correctly as there's no inline struct.
+ */
+choice SimpleChoice : uint16 {
+    case 0x1234:
+        uint32 data;
+    default:
+        uint16 fallback;
+};
+
+/**
+ * Test case 3: Inline discriminator with inline struct containing only
+ * the discriminator re-read plus other data.
+ */
+choice ResourceName : uint16 {
+    case 0xFFFF: {
+        uint16 marker;    // Should read 0xFFFF
+        uint16 ordinal;   // Should read the ordinal value
+    } by_ordinal;
+    default:
+        string by_name;
+};

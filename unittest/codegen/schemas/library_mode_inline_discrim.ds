@@ -1,0 +1,125 @@
+/**
+ * Library Mode Test: Inline Discriminator with Anonymous Block Cases
+ *
+ * Tests the fix for the bug where inline discriminator choices would
+ * consume the discriminator byte but not pass it to case structures.
+ *
+ * For inline struct cases (anonymous blocks), the read position should
+ * be restored so the struct can re-read the discriminator as its first field.
+ */
+
+/**
+ * Inline discriminator choice with inline struct cases.
+ * The inline struct's first field should be the discriminator value.
+ */
+choice IDNameOrOrdinal : uint8 {
+    case 0xFF: {
+        uint8 marker;      // Should read 0xFF (the discriminator)
+        uint16 id_value;   // Should read the next 2 bytes
+    } ordinal_id;
+    default: {
+        uint8 length;      // Should read the discriminator (which is the string length)
+        uint8 chars[length];
+    } string_name;
+};
+
+struct IDEntity {
+    IDNameOrOrdinal identifier;
+};
+
+/**
+ * Mixed choice: some cases are inline structs, some are regular fields.
+ * Only inline struct cases should have position restored.
+ */
+choice IDMixedChoice : uint16 {
+    case 0xFFFF: {
+        uint16 marker;     // Should read 0xFFFF
+        uint32 data;
+    } special_case;
+    case 0x0001:
+        uint32 regular_data;  // Regular field - reads AFTER discriminator
+    default:
+        uint16 fallback;      // Regular field - reads AFTER discriminator
+};
+
+struct IDMixedContainer {
+    IDMixedChoice value;
+};
+
+/**
+ * Simple inline discriminator without inline structs (for comparison).
+ * Regular fields should NOT have position restored.
+ */
+choice IDSimpleInline : uint8 {
+    case 1:
+        uint32 value_one;
+    case 2:
+        uint16 value_two;
+    default:
+        uint8 value_default;
+};
+
+struct IDSimpleContainer {
+    IDSimpleInline choice_field;
+};
+
+// ============================================================================
+// Named Struct Cases (Non-Anonymous) - Discriminator SHOULD be consumed
+// ============================================================================
+
+/**
+ * Named struct for ordinal data.
+ * When used in a choice case, discriminator is consumed BEFORE this struct reads.
+ */
+struct OrdinalData {
+    uint8 first_byte;   // Reads AFTER discriminator (NOT the discriminator)
+    uint16 id_value;
+};
+
+/**
+ * Named struct for string data.
+ */
+struct StringData {
+    uint8 length;
+    uint8 chars[length];
+};
+
+/**
+ * Choice using NAMED struct types (not anonymous blocks).
+ * Discriminator should be consumed, NOT restored.
+ * This is the opposite behavior from anonymous block cases.
+ */
+choice NamedStructChoice : uint8 {
+    case 0xFF:
+        OrdinalData ordinal;   // Named struct - reads AFTER discriminator
+    default:
+        StringData str;        // Named struct - reads AFTER discriminator
+};
+
+struct NamedStructContainer {
+    NamedStructChoice value;
+};
+
+/**
+ * Mixed choice with BOTH anonymous blocks AND named struct types.
+ * Only anonymous blocks should have position restored.
+ */
+struct SpecialData {
+    uint16 first_word;   // Reads AFTER discriminator
+    uint32 payload;
+};
+
+choice MixedAnonAndNamed : uint16 {
+    case 0xFFFF: {
+        uint16 marker;     // Anonymous block - position restored, reads discriminator
+        uint32 data;
+    } anon_case;
+    case 0x0001:
+        SpecialData named_case;  // Named struct - reads AFTER discriminator
+    default:
+        uint16 fallback;
+};
+
+struct MixedContainer {
+    MixedAnonAndNamed value;
+};
