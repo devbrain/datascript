@@ -184,6 +184,12 @@ CompilerOptions parse_command_line(int argc, char** argv) {
             continue;
         }
 
+        // CMake integration: use input filename as output filename base
+        if (std::strcmp(arg, "--use-input-name") == 0) {
+            opts.use_input_name = true;
+            continue;
+        }
+
         // Verbosity
         if (std::strcmp(arg, "-v") == 0 || std::strcmp(arg, "--verbose") == 0) {
             opts.verbose = true;
@@ -323,6 +329,7 @@ void print_help(const char* program_name) {
     std::cout << "  --print-imports         Print import dependencies (one per line)\n";
     std::cout << "  --print-outputs         Print output files (relative paths, one per line)\n";
     std::cout << "  --flat-output           Output to flat directory (no package subdirs)\n";
+    std::cout << "  --use-input-name        Use input filename as output base (foo.ds -> foo.hh)\n";
     std::cout << "\n";
 
     std::cout << "Output:\n";

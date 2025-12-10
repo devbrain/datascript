@@ -68,6 +68,7 @@ struct CompilerOptions {
 
     OutputMode output_mode = OutputMode::Compile;    // --print-imports, --print-outputs
     bool flat_output = false;                        // --flat-output (no package subdirs)
+    bool use_input_name = false;                     // --use-input-name (output name = input name)
 };
 
 /// Parse command-line arguments

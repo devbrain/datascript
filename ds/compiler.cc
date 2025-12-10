@@ -138,6 +138,12 @@ void Compiler::generate_code(const ir::bundle& bundle, const module_set& modules
         renderer->set_option(option_name, option_value);
     }
 
+    // If --use-input-name is set, derive output name from input filename
+    if (options_.use_input_name && !options_.input_files.empty()) {
+        std::string input_basename = options_.input_files[0].stem().string();
+        renderer->set_option("output-name", input_basename);
+    }
+
     // Determine output directory (use current directory if not specified)
     std::filesystem::path output_dir = options_.output_dir;
     if (output_dir.empty()) {
@@ -246,6 +252,12 @@ int Compiler::print_outputs(const ir::bundle& bundle, const module_set& modules)
     // Apply generator-specific options to renderer (needed for mode selection)
     for (const auto& [option_name, option_value] : options_.generator_options) {
         renderer->set_option(option_name, option_value);
+    }
+
+    // If --use-input-name is set, derive output name from input filename
+    if (options_.use_input_name && !options_.input_files.empty()) {
+        std::string input_basename = options_.input_files[0].stem().string();
+        renderer->set_option("output-name", input_basename);
     }
 
     // Derive relative output path from package name (unless --flat-output)
