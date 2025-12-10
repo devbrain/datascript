@@ -880,6 +880,7 @@ void CppRenderer::render_start_choice(const StartChoiceCommand& cmd) {
         std::string field_name = cmd.case_field_names[i];
         std::string wrapper_name = "Case" + std::to_string(i) + "_" + field_name;
         ctx_ << wrapper_name + "* as_" + field_name + "() { return std::get_if<" + wrapper_name + ">(&data); }" << endl;
+        ctx_ << "const " + wrapper_name + "* as_" + field_name + "() const { return std::get_if<" + wrapper_name + ">(&data); }" << endl;
     }
     ctx_ << blank;
 }

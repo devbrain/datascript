@@ -35,7 +35,7 @@ private:
     ir::bundle build_ir(const semantic::analysis_result& result);
 
     /// Stage 5: Generate code in target language
-    void generate_code(const ir::bundle& bundle);
+    void generate_code(const ir::bundle& bundle, const module_set& modules);
 
     // ========================================================================
     // Output File Writing
@@ -50,6 +50,16 @@ private:
 
     /// Print diagnostic messages
     void print_diagnostics(const semantic::analysis_result& result);
+
+    // ========================================================================
+    // CMake Integration Methods
+    // ========================================================================
+
+    /// Print import dependencies (for --print-imports)
+    int print_imports(const module_set& modules);
+
+    /// Print output files (for --print-outputs)
+    int print_outputs(const ir::bundle& bundle, const module_set& modules);
 
     // ========================================================================
     // State

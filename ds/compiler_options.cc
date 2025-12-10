@@ -166,6 +166,24 @@ CompilerOptions parse_command_line(int argc, char** argv) {
             std::exit(0);
         }
 
+        // CMake integration: print imports
+        if (std::strcmp(arg, "--print-imports") == 0) {
+            opts.output_mode = OutputMode::PrintImports;
+            continue;
+        }
+
+        // CMake integration: print outputs
+        if (std::strcmp(arg, "--print-outputs") == 0) {
+            opts.output_mode = OutputMode::PrintOutputs;
+            continue;
+        }
+
+        // CMake integration: flat output (no package subdirectories)
+        if (std::strcmp(arg, "--flat-output") == 0) {
+            opts.flat_output = true;
+            continue;
+        }
+
         // Verbosity
         if (std::strcmp(arg, "-v") == 0 || std::strcmp(arg, "--verbose") == 0) {
             opts.verbose = true;
@@ -299,6 +317,12 @@ void print_help(const char* program_name) {
     std::cout << "  -h, --help              Show this help message\n";
     std::cout << "  --version               Show version information\n";
     std::cout << "  --list-generators       List available code generators\n";
+    std::cout << "\n";
+
+    std::cout << "CMake Integration:\n";
+    std::cout << "  --print-imports         Print import dependencies (one per line)\n";
+    std::cout << "  --print-outputs         Print output files (relative paths, one per line)\n";
+    std::cout << "  --flat-output           Output to flat directory (no package subdirs)\n";
     std::cout << "\n";
 
     std::cout << "Output:\n";

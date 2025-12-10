@@ -14,6 +14,13 @@ namespace datascript::codegen {
 
 namespace datascript::driver {
 
+/// Output mode for the compiler
+enum class OutputMode {
+    Compile,       // Normal compilation (default)
+    PrintImports,  // Print imports and exit (for CMake dependency tracking)
+    PrintOutputs   // Print output filenames and exit (for CMake dependency tracking)
+};
+
 /// Compiler options (driver configuration only)
 struct CompilerOptions {
     // ========================================================================
@@ -54,6 +61,13 @@ struct CompilerOptions {
 
     bool verbose = false;                            // -v, --verbose
     bool quiet = false;                              // -q, --quiet
+
+    // ========================================================================
+    // Output Mode (for CMake integration)
+    // ========================================================================
+
+    OutputMode output_mode = OutputMode::Compile;    // --print-imports, --print-outputs
+    bool flat_output = false;                        // --flat-output (no package subdirs)
 };
 
 /// Parse command-line arguments

@@ -5,6 +5,7 @@
 #include <datascript/parser_error.hh>
 #include <datascript/renderer_registry.hh>
 #include <datascript/semantic.hh>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
@@ -29,6 +30,11 @@ int Compiler::compile() {
             // Stage 1 & 2: Load file and imports
             module_set modules = load_imports(input_file);
 
+            // CMake integration: print imports and exit
+            if (options_.output_mode == OutputMode::PrintImports) {
+                return print_imports(modules);
+            }
+
             // Stage 3: Semantic analysis
             semantic::analysis_result analysis_result;
             if (!run_semantic_analysis(modules, analysis_result)) {
@@ -38,8 +44,13 @@ int Compiler::compile() {
             // Stage 4: Build IR from analyzed modules
             ir::bundle bundle = build_ir(analysis_result);
 
+            // CMake integration: print outputs and exit
+            if (options_.output_mode == OutputMode::PrintOutputs) {
+                return print_outputs(bundle, modules);
+            }
+
             // Stage 5: Generate code
-            generate_code(bundle);
+            generate_code(bundle, modules);
         }
 
         logger_.success("Compilation successful");
@@ -101,7 +112,7 @@ ir::bundle Compiler::build_ir(const semantic::analysis_result& result) {
     return ir::build_ir(result.analyzed.value());
 }
 
-void Compiler::generate_code(const ir::bundle& bundle) {
+void Compiler::generate_code(const ir::bundle& bundle, const module_set& modules) {
     logger_.verbose("Generating code for language: " + options_.target_language);
 
     // Get renderer from registry
@@ -132,6 +143,17 @@ void Compiler::generate_code(const ir::bundle& bundle) {
     if (output_dir.empty()) {
         output_dir = std::filesystem::current_path();
     }
+
+    // Add package-based subdirectory (unless --flat-output)
+    // e.g., "formats.mz" -> "formats/mz/"
+    if (!options_.flat_output && !modules.main.package_name.empty()) {
+        std::string pkg_path = modules.main.package_name;
+        std::replace(pkg_path.begin(), pkg_path.end(), '.', std::filesystem::path::preferred_separator);
+        output_dir /= pkg_path;
+    }
+
+    // Create directories as needed
+    std::filesystem::create_directories(output_dir);
 
     // Generate output files
     auto output_files = renderer->generate_files(bundle, output_dir);
@@ -194,6 +216,53 @@ void Compiler::print_diagnostics(const semantic::analysis_result& result) {
     if (result.has_warnings() && !options_.suppress_all_warnings) {
         logger_.warning("Total warnings: " + std::to_string(result.warning_count()));
     }
+}
+
+// ============================================================================
+// CMake Integration Methods
+// ============================================================================
+
+int Compiler::print_imports(const module_set& modules) {
+    // Print package names of all imported modules (one per line)
+    // This is used by CMake for dependency tracking
+    for (const auto& mod : modules.imported) {
+        if (!mod.package_name.empty()) {
+            std::cout << mod.package_name << "\n";
+        }
+    }
+    return 0;
+}
+
+int Compiler::print_outputs(const ir::bundle& bundle, const module_set& modules) {
+    // Get renderer from registry
+    auto& registry = RendererRegistry::instance();
+    auto* renderer = registry.get_renderer(options_.target_language);
+
+    if (!renderer) {
+        std::cerr << "Error: Renderer not found for language: " << options_.target_language << "\n";
+        return 1;
+    }
+
+    // Apply generator-specific options to renderer (needed for mode selection)
+    for (const auto& [option_name, option_value] : options_.generator_options) {
+        renderer->set_option(option_name, option_value);
+    }
+
+    // Derive relative output path from package name (unless --flat-output)
+    // e.g., "formats.mz" -> "formats/mz/"
+    std::string pkg_path;
+    if (!options_.flat_output && !modules.main.package_name.empty()) {
+        pkg_path = modules.main.package_name;
+        std::replace(pkg_path.begin(), pkg_path.end(), '.', '/');
+        pkg_path += "/";
+    }
+
+    // Generate files with empty output dir to get just the filenames
+    auto files = renderer->generate_files(bundle, "");
+    for (const auto& f : files) {
+        std::cout << pkg_path << f.path.filename().string() << "\n";
+    }
+    return 0;
 }
 
 }  // namespace datascript::driver
