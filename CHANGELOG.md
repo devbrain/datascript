@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CMake datascript_generate() Function Configure-Time Failure** (December 10, 2025)
+  - Fixed `datascript_generate()` CMake function failing at configure time when used via FetchContent
+  - **Bug**: Function used `$<TARGET_FILE:ds>` generator expressions in `execute_process()` calls
+  - **Impact**: CMake configuration failed with "add_custom_command Wrong syntax. A TARGET or OUTPUT must be specified."
+  - **Root Cause**: Generator expressions are NOT evaluated during CMake's configure phase when `execute_process()` runs - they're only evaluated at generation time
+  - **Solution**:
+    - Added `--use-input-name` CLI option to `ds` compiler that derives output filename from input filename (e.g., `foo.ds` → `foo.hh`)
+    - Rewrote `datascript_generate()` to compute output filenames at configure time without running `ds`
+    - Extract package declarations and imports by reading schema files directly
+    - Pass `--use-input-name` to `ds` in `add_custom_command()` (which correctly evaluates generator expressions at build time)
+  - **New CLI flag**: `--use-input-name` - Use input filename as output filename base
+    - Single-header mode: `protocol.ds` → `protocol.hh`
+    - Library mode: `protocol.ds` → `protocol.h`, `protocol_impl.h`, `protocol_runtime.h`
+  - Files: `ds/compiler_options.hh`, `ds/compiler_options.cc`, `ds/compiler.cc`, `cmake/DataScriptGenerate.cmake`
+  - All 978 tests pass
+
 ### Added
 - **Range-Based Discriminators in Choice Types** (December 9, 2025)
   - New feature: Choice cases can now use comparison operators to match value ranges

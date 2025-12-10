@@ -72,6 +72,110 @@ Example usage::
 
 #]=======================================================================]
 
+#[=======================================================================[
+Helper function: Extract package name from a DataScript schema file.
+
+Reads the file and looks for a "package" declaration to determine
+the package path. Returns empty string if no package declaration found.
+#]=======================================================================]
+function(_datascript_extract_package schema_file out_package)
+    # Read the schema file
+    file(READ "${schema_file}" schema_content)
+
+    # Look for package declaration: package foo.bar.baz;
+    # Match: "package" followed by whitespace, then identifier(s) separated by dots, then semicolon
+    string(REGEX MATCH "package[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_.]*)[^;]*;" package_match "${schema_content}")
+
+    if(package_match)
+        string(REGEX REPLACE "package[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_.]*)[^;]*;" "\\1" package_name "${package_match}")
+        set(${out_package} "${package_name}" PARENT_SCOPE)
+    else()
+        set(${out_package} "" PARENT_SCOPE)
+    endif()
+endfunction()
+
+#[=======================================================================[
+Helper function: Extract imports from a DataScript schema file.
+
+Reads the file and looks for "import" declarations.
+Returns a list of package names that are imported.
+#]=======================================================================]
+function(_datascript_extract_imports schema_file out_imports)
+    # Read the schema file
+    file(READ "${schema_file}" schema_content)
+
+    # Find all import declarations: import foo.bar;
+    # Use a simpler approach: find all matches
+    set(imports_list "")
+
+    # Split content into lines for easier processing
+    string(REPLACE "\n" ";" schema_lines "${schema_content}")
+
+    foreach(line IN LISTS schema_lines)
+        # Match import declarations (not wildcard imports for now)
+        if(line MATCHES "^[ \t]*import[ \t]+([a-zA-Z_][a-zA-Z0-9_.]*);")
+            string(REGEX REPLACE "^[ \t]*import[ \t]+([a-zA-Z_][a-zA-Z0-9_.]*);.*" "\\1" import_name "${line}")
+            list(APPEND imports_list "${import_name}")
+        endif()
+    endforeach()
+
+    set(${out_imports} "${imports_list}" PARENT_SCOPE)
+endfunction()
+
+#[=======================================================================[
+Helper function: Compute output filenames for a DataScript schema.
+
+Based on the schema filename, package declaration, and options,
+computes the expected output filenames without running the ds compiler.
+
+For C++ (default):
+  - Single-header mode: {schema_basename}.hh
+  - Library mode: {schema_basename}.h, {schema_basename}_impl.h, {schema_basename}_runtime.h
+
+The package path prefix is added if PRESERVE_PACKAGE_DIRS is ON.
+#]=======================================================================]
+function(_datascript_compute_outputs schema_file package_name options preserve_package_dirs language out_files out_subdir)
+    # Get the base name from schema filename (without extension)
+    get_filename_component(schema_basename "${schema_file}" NAME_WE)
+
+    # Compute package-based subdirectory
+    set(pkg_subdir "")
+    if(preserve_package_dirs AND package_name)
+        # Convert package.name to package/name
+        string(REPLACE "." "/" pkg_subdir "${package_name}")
+    endif()
+
+    # Determine output mode from options
+    set(is_library_mode FALSE)
+    foreach(opt IN LISTS options)
+        if(opt MATCHES "--cpp-mode=library")
+            set(is_library_mode TRUE)
+        endif()
+    endforeach()
+
+    # Generate output filenames based on language and mode
+    # With --use-input-name, the output base is always the schema basename
+    set(output_files "")
+
+    if(language STREQUAL "cpp")
+        if(is_library_mode)
+            # Library mode: three header files (uses .h extension)
+            list(APPEND output_files "${schema_basename}.h")
+            list(APPEND output_files "${schema_basename}_impl.h")
+            list(APPEND output_files "${schema_basename}_runtime.h")
+        else()
+            # Single-header mode (default, uses .hh extension)
+            list(APPEND output_files "${schema_basename}.hh")
+        endif()
+    else()
+        # Unknown language - use schema basename with .h extension
+        list(APPEND output_files "${schema_basename}.h")
+    endif()
+
+    set(${out_files} "${output_files}" PARENT_SCOPE)
+    set(${out_subdir} "${pkg_subdir}" PARENT_SCOPE)
+endfunction()
+
 function(datascript_generate)
     cmake_parse_arguments(DS
         ""                                              # Options (flags)
@@ -102,7 +206,7 @@ function(datascript_generate)
         set(DS_LANGUAGE "cpp")
     endif()
 
-    # Build import directory arguments
+    # Build import directory arguments for ds command
     set(import_args "")
     foreach(dir IN LISTS DS_IMPORT_DIRS)
         list(APPEND import_args "-I${dir}")
@@ -124,49 +228,43 @@ function(datascript_generate)
             set(schema "${CMAKE_CURRENT_SOURCE_DIR}/${schema}")
         endif()
 
-        # Get import dependencies using ds --print-imports
-        execute_process(
-            COMMAND $<TARGET_FILE:ds> --print-imports ${import_args} "${schema}"
-            OUTPUT_VARIABLE imports_output
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            RESULT_VARIABLE imports_result
-            ERROR_QUIET
+        # Verify schema file exists
+        if(NOT EXISTS "${schema}")
+            message(FATAL_ERROR "datascript_generate: Schema file not found: ${schema}")
+        endif()
+
+        # Extract package declaration from schema file
+        _datascript_extract_package("${schema}" schema_package)
+
+        # Extract imports from schema file
+        _datascript_extract_imports("${schema}" schema_imports)
+
+        # Compute output filenames based on schema, package, and options
+        _datascript_compute_outputs(
+            "${schema}"
+            "${schema_package}"
+            "${DS_OPTIONS}"
+            "${DS_PRESERVE_PACKAGE_DIRS}"
+            "${DS_LANGUAGE}"
+            output_basenames
+            pkg_subdir
         )
 
-        # Get output files using ds --print-outputs
-        execute_process(
-            COMMAND $<TARGET_FILE:ds> --print-outputs
-                    -t ${DS_LANGUAGE} ${flat_output_arg} ${import_args} ${DS_OPTIONS} "${schema}"
-            OUTPUT_VARIABLE outputs_output
-            OUTPUT_STRIP_TRAILING_WHITESPACE
-            RESULT_VARIABLE outputs_result
-            ERROR_QUIET
-        )
-
-        # Parse output files (one per line)
-        string(REPLACE "\n" ";" output_files "${outputs_output}")
-
-        # Build list of generated files with full paths
-        # Output files are relative paths like "formats/mz/image_dos_header.hh"
+        # Build full output paths
         set(schema_outputs "")
-        foreach(output_file IN LISTS output_files)
-            if(output_file)
-                list(APPEND schema_outputs "${DS_OUTPUT_DIR}/${output_file}")
-            endif()
-        endforeach()
+        if(pkg_subdir)
+            set(output_subdir "${DS_OUTPUT_DIR}/${pkg_subdir}")
+        else()
+            set(output_subdir "${DS_OUTPUT_DIR}")
+        endif()
 
-        # Collect directories that need to be created
-        set(output_dirs "")
-        foreach(output_file IN LISTS schema_outputs)
-            get_filename_component(output_dir "${output_file}" DIRECTORY)
-            list(APPEND output_dirs "${output_dir}")
+        foreach(output_basename IN LISTS output_basenames)
+            list(APPEND schema_outputs "${output_subdir}/${output_basename}")
         endforeach()
-        list(REMOVE_DUPLICATES output_dirs)
 
         # Resolve import dependencies to file paths
         set(import_deps "${schema}")  # Always depend on the schema itself
-        string(REPLACE "\n" ";" import_list "${imports_output}")
-        foreach(import_pkg IN LISTS import_list)
+        foreach(import_pkg IN LISTS schema_imports)
             if(import_pkg)
                 # Convert package name to path: foo.bar -> foo/bar.ds
                 string(REPLACE "." "/" import_path "${import_pkg}")
@@ -180,19 +278,17 @@ function(datascript_generate)
             endif()
         endforeach()
 
-        # Build mkdir commands for all needed directories
-        set(mkdir_commands "")
-        foreach(dir IN LISTS output_dirs)
-            list(APPEND mkdir_commands COMMAND ${CMAKE_COMMAND} -E make_directory "${dir}")
-        endforeach()
-
         # Add custom command for this schema
+        # Note: We use $<TARGET_FILE:ds> here which is valid in add_custom_command
+        # (evaluated at build time, not configure time)
+        # --use-input-name ensures output filename matches schema filename (foo.ds -> foo.hh)
         add_custom_command(
             OUTPUT ${schema_outputs}
-            ${mkdir_commands}
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${output_subdir}"
             COMMAND $<TARGET_FILE:ds>
                     -t ${DS_LANGUAGE}
                     -o "${DS_OUTPUT_DIR}"
+                    --use-input-name
                     ${flat_output_arg}
                     ${import_args}
                     ${DS_OPTIONS}

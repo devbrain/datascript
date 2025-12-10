@@ -329,7 +329,7 @@ Changes to any `.ds` file listed in `SCHEMAS` trigger regeneration.
 
 ### Import Dependencies
 
-The `ds --print-imports` command is used at configure time to discover import dependencies. If schema A imports schema B, changes to B will trigger regeneration of A.
+Import dependencies are discovered at configure time by reading schema files directly. If schema A imports schema B, changes to B will trigger regeneration of A.
 
 ```
 # schemas/protocol.ds
@@ -337,9 +337,23 @@ package protocol;
 import common.types;  # Dependency tracked automatically
 ```
 
+### Output Filename Convention
+
+The `datascript_generate()` function uses the `--use-input-name` flag to ensure predictable output filenames:
+
+| Input Schema | Single-Header Output | Library Mode Outputs |
+|--------------|---------------------|---------------------|
+| `protocol.ds` | `protocol.hh` | `protocol.h`, `protocol_impl.h`, `protocol_runtime.h` |
+| `mz_format.ds` | `mz_format.hh` | `mz_format.h`, `mz_format_impl.h`, `mz_format_runtime.h` |
+
+This convention ensures:
+- Output filenames match input filenames (minus `.ds` extension)
+- Predictable include paths for consuming code
+- Consistent behavior regardless of struct names in the schema
+
 ### Rebuild Behavior
 
-- **Configure time:** Import dependencies are discovered
+- **Configure time:** Import dependencies are discovered by reading schema files
 - **Build time:** Files are regenerated only when dependencies change
 - **Clean build:** All schema files are processed
 
@@ -442,6 +456,10 @@ endif()
 
 Ensure `FetchContent_MakeAvailable(DataScript)` is called before using `datascript_generate()`.
 
+### "add_custom_command Wrong syntax" or empty OUTPUT list
+
+This error was fixed in December 2025. If you encounter it, ensure you're using the latest version of DataScript. The fix involved rewriting the CMake function to avoid using generator expressions in `execute_process()` calls.
+
 ### Generated files not found
 
 Check that:
@@ -483,12 +501,24 @@ ds --print-imports -I schemas schema.ds
 # Print output files (relative paths, one per line)
 ds --print-outputs -t cpp -I schemas schema.ds
 
+# Use input filename as output base (foo.ds -> foo.hh)
+ds --use-input-name -t cpp -o outdir schema.ds
+
 # Flat output (no package subdirectories)
 ds --flat-output -t cpp -o outdir schema.ds
 
 # Combine flags
-ds --print-outputs --flat-output -t cpp --cpp-mode=library schema.ds
+ds --print-outputs --flat-output --use-input-name -t cpp --cpp-mode=library schema.ds
 ```
+
+### CMake Integration Flags
+
+| Flag | Description |
+|------|-------------|
+| `--print-imports` | Print import dependencies (one per line) |
+| `--print-outputs` | Print output files (relative paths, one per line) |
+| `--use-input-name` | Use input filename as output base (`foo.ds` → `foo.hh`) |
+| `--flat-output` | Output to flat directory (no package subdirectories) |
 
 ## See Also
 
