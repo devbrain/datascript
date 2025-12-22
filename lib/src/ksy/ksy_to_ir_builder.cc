@@ -234,7 +234,7 @@ ir::enum_def KsyToIrBuilder::build_enum(const std::string& name,
         std::string item_name = (*it).get_value<std::string>();
 
         ir::enum_def::item item;
-        item.value = static_cast<uint64_t>(value);
+        item.value = value;
         item.name = item_name;
         item.source = {"", 0, 0};
 

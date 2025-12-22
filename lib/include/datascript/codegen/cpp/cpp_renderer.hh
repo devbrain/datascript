@@ -60,6 +60,11 @@ public:
     void set_namespace(const std::string& ns);
 
     /**
+     * Get the output name override if set.
+     */
+    std::optional<std::string> get_output_name_override() const { return output_name_override_; }
+
+    /**
      * Enable/disable safe read mode (returns bool vs exceptions).
      */
     void set_safe_read_mode(bool enabled);

@@ -112,18 +112,21 @@ function(target_set_warnings_no_error target)
         target_compile_options(${target} PRIVATE
             /W4
             /permissive-
+            /WX-            # Explicitly disable warnings-as-errors
         )
     elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         target_compile_options(${target} PRIVATE
             -Wall
             -Wextra
             -Wpedantic
+            -Wno-error      # Explicitly disable warnings-as-errors
         )
     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_compile_options(${target} PRIVATE
             -Wall
             -Wextra
             -Wpedantic
+            -Wno-error      # Explicitly disable warnings-as-errors
         )
     endif()
 endfunction()

@@ -13,13 +13,13 @@ TEST_SUITE("E2E - Parameterized Types") {
         std::vector<uint8_t> data;
 
         // Buffer_16 small_buffer (16 bytes)
-        for (int i = 0; i < 16; i++) data.push_back(i);
+        for (int i = 0; i < 16; i++) data.push_back(static_cast<uint8_t>(i));
 
         // Buffer_256 large_buffer (256 bytes)
-        for (int i = 0; i < 256; i++) data.push_back(i);
+        for (int i = 0; i < 256; i++) data.push_back(static_cast<uint8_t>(i));
 
         // Buffer_16 another_small (16 bytes) - reuses same type
-        for (int i = 0; i < 16; i++) data.push_back(0xFF - i);
+        for (int i = 0; i < 16; i++) data.push_back(static_cast<uint8_t>(0xFF - i));
 
         // FixedArray_4 (4 uint32 elements)
         for (int i = 0; i < 4; i++) {

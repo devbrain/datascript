@@ -63,6 +63,7 @@ void CppCodeWriter::write_generated_warning_push() {
     write_line("#pragma GCC diagnostic ignored \"-Wunused-variable\"");
     write_line("#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"");
     write_line("#pragma GCC diagnostic ignored \"-Wunused-parameter\"");
+    write_line("#pragma GCC diagnostic ignored \"-Wstringop-overflow\"");
     write_line("#endif");
     write_line("");
 }

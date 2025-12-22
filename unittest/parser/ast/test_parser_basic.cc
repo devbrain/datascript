@@ -234,6 +234,6 @@ TEST_SUITE("Parser - Error Handling") {
     }
 
     TEST_CASE("Invalid escape sequence throws") {
-        CHECK_THROWS(parse_datascript(std::string(R"(const string X = "\x";)")));
+        CHECK_THROWS(parse_datascript(std::string("const string X = \"\\x\";")));
     }
 }

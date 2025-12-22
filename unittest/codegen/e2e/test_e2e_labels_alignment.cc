@@ -292,7 +292,7 @@ TEST_SUITE("E2E - Labels and Alignment") {
         // Test with various unaligned offsets (1, 2, 3 bytes)
         for (size_t offset = 1; offset <= 3; ++offset) {
             std::vector<uint8_t> unaligned_buffer(offset + aligned_data.size());
-            std::fill(unaligned_buffer.begin(), unaligned_buffer.begin() + offset, 0xFF);
+            std::fill(unaligned_buffer.begin(), unaligned_buffer.begin() + offset, static_cast<uint8_t>(0xFF));
             std::copy(aligned_data.begin(), aligned_data.end(), unaligned_buffer.begin() + offset);
 
             const uint8_t* ptr = unaligned_buffer.data() + offset;

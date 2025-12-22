@@ -554,6 +554,7 @@ void CppRenderer::render_module_start(const ModuleStartCommand& cmd) {
     ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-variable\"" << endl;
     ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"" << endl;
     ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-parameter\"" << endl;
+    ctx_ << "#pragma GCC diagnostic ignored \"-Wstringop-overflow\"" << endl;
     ctx_ << "#endif" << endl;
     ctx_ << blank;
 

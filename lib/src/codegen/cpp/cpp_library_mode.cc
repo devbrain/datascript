@@ -89,9 +89,17 @@ CppLibraryModeGenerator::LibraryFiles CppLibraryModeGenerator::get_filenames(
 {
     std::string base_name;
 
-    // TODO: Get output_name_override from renderer if available
-    // For now, derive from module name or first struct
-    if (!bundle.name.empty()) {
+    // Check for output name override from renderer
+    auto output_name_override = renderer_.get_output_name_override();
+    if (output_name_override) {
+        base_name = *output_name_override;
+        // Remove any extension if present
+        auto dot_pos = base_name.rfind('.');
+        if (dot_pos != std::string::npos) {
+            base_name = base_name.substr(0, dot_pos);
+        }
+    } else if (!bundle.name.empty()) {
+        // Derive from module name
         base_name = bundle.name;
         // Replace dots with underscores: "pe.format" -> "pe_format"
         std::replace(base_name.begin(), base_name.end(), '.', '_');
@@ -328,6 +336,7 @@ std::string CppLibraryModeGenerator::generate_impl_header(
     output << "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wunused-parameter\"\n";
+    output << "#pragma GCC diagnostic ignored \"-Wstringop-overflow\"\n";
     output << "#endif\n\n";
 
     output << "#include \"" << std::filesystem::path(files.public_header).filename().string() << "\"\n";
