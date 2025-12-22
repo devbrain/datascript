@@ -25,11 +25,11 @@ jobs:
           # Linux Clang
           - os: ubuntu-latest
             compiler: clang
-            version: 15
+            version: 16
             build_type: Release
           - os: ubuntu-latest
             compiler: clang
-            version: 17
+            version: 18
             build_type: Release
 
           # macOS (Apple Clang)

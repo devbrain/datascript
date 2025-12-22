@@ -469,7 +469,8 @@ static void validate_choice_discriminator_types(
                 diagnostic_level::error,
                 "",  // code
                 "Inline choice '" + choice.name + "' requires explicit discriminator type (e.g., 'choice " + choice.name + " : uint16 { ... }')",
-                choice.pos
+                choice.pos,
+                std::nullopt, std::nullopt, std::nullopt  // related_position, related_message, suggestion
             });
             continue;
         }
@@ -484,7 +485,8 @@ static void validate_choice_discriminator_types(
                 diagnostic_level::error,
                 "",  // code
                 "Inline choice '" + choice.name + "' discriminator must be a primitive integer type (uint8, uint16, uint32, or uint64)",
-                choice.pos
+                choice.pos,
+                std::nullopt, std::nullopt, std::nullopt  // related_position, related_message, suggestion
             });
             continue;
         }
@@ -497,7 +499,8 @@ static void validate_choice_discriminator_types(
                 diagnostic_level::error,
                 "",  // code
                 "Inline choice '" + choice.name + "' discriminator must be an unsigned integer type (uint8, uint16, uint32, or uint64)",
-                choice.pos
+                choice.pos,
+                std::nullopt, std::nullopt, std::nullopt  // related_position, related_message, suggestion
             });
             continue;
         }
@@ -515,7 +518,8 @@ static void validate_choice_discriminator_types(
                 diagnostic_level::error,
                 "",  // code
                 "Inline choice '" + choice.name + "' discriminator must be uint8, uint16, uint32, or uint64",
-                choice.pos
+                choice.pos,
+                std::nullopt, std::nullopt, std::nullopt  // related_position, related_message, suggestion
             });
             continue;
         }
@@ -534,7 +538,8 @@ static void validate_choice_discriminator_types(
                             "",  // code
                             "Case value " + std::to_string(case_val) + " exceeds maximum value " +
                             std::to_string(max_allowed) + " for discriminator type uint" + std::to_string(prim_type.bits),
-                            choice.pos
+                            choice.pos,
+                            std::nullopt, std::nullopt, std::nullopt  // related_position, related_message, suggestion
                         });
                     }
                 }

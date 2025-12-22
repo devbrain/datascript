@@ -899,8 +899,8 @@ size_t monomorphize_struct(const ast::struct_def* base_struct,
     mono_ctx->current_substitution = &subst;
 
     // Build fields with parameter substitution and label/alignment directives
-    std::optional<expr> pending_label;
-    std::optional<uint64_t> pending_alignment;
+    std::optional<expr> pending_label = std::nullopt;
+    std::optional<uint64_t> pending_alignment = std::nullopt;
 
     for (const auto& body_item : base_struct->body) {
         if (auto* ast_label = std::get_if<ast::label_directive>(&body_item)) {
@@ -1458,8 +1458,8 @@ struct_def build_struct(const ast::struct_def& ast_struct,
     result.source = source_location::from_ast(ast_struct.pos);
 
     // Build fields with labels and alignment directives
-    std::optional<expr> pending_label;
-    std::optional<uint64_t> pending_alignment;
+    std::optional<expr> pending_label = std::nullopt;
+    std::optional<uint64_t> pending_alignment = std::nullopt;
 
     for (const auto& body_item : ast_struct.body) {
         if (auto* ast_label = std::get_if<ast::label_directive>(&body_item)) {

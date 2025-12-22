@@ -12,6 +12,8 @@
 #include <ostream>
 #include <string>
 #include <memory>
+#include <cstdint>
+#include <type_traits>
 
 namespace datascript::codegen {
 
@@ -89,6 +91,13 @@ public:
     CodeWriter& operator<<(char c);
     CodeWriter& operator<<(int value);
     CodeWriter& operator<<(size_t value);
+    // Only enable uint64_t/int64_t overloads when they differ from size_t/int (macOS)
+    template<typename T, std::enable_if_t<
+        (std::is_same_v<T, uint64_t> && !std::is_same_v<uint64_t, size_t>) ||
+        (std::is_same_v<T, int64_t> && !std::is_same_v<int64_t, int> && !std::is_same_v<int64_t, long>), int> = 0>
+    CodeWriter& operator<<(T value) {
+        return *this << std::to_string(value);
+    }
 
     // Stream manipulator support (for custom endl, indent, etc.)
     CodeWriter& operator<<(CodeWriter& (*manip)(CodeWriter&));

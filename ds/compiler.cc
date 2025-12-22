@@ -154,7 +154,8 @@ void Compiler::generate_code(const ir::bundle& bundle, const module_set& modules
     // e.g., "formats.mz" -> "formats/mz/"
     if (!options_.flat_output && !modules.main.package_name.empty()) {
         std::string pkg_path = modules.main.package_name;
-        std::replace(pkg_path.begin(), pkg_path.end(), '.', std::filesystem::path::preferred_separator);
+        std::replace(pkg_path.begin(), pkg_path.end(), '.',
+                     static_cast<char>(std::filesystem::path::preferred_separator));
         output_dir /= pkg_path;
     }
 
