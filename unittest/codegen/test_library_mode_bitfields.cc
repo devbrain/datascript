@@ -4,7 +4,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "../library_mode_generated/SimpleBitfield_impl.h"
+#include "../library_mode_generated/library_mode_bitfields_impl.h"
 
 using namespace generated;
 

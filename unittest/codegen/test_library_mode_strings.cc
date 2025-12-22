@@ -4,7 +4,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "../library_mode_generated/FixedString_impl.h"
+#include "../library_mode_generated/library_mode_strings_impl.h"
 #include <cstring>
 
 using namespace generated;

@@ -11,7 +11,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "NEControlItem_impl.h"
+#include "../library_mode_generated/inline_discrim_default_bug_impl.h"
 #include <vector>
 #include <cstdint>
 #include <cstring>

@@ -11,7 +11,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "IDNameOrOrdinal__ordinal_id_case__type_impl.h"
+#include "../library_mode_generated/library_mode_inline_discrim_impl.h"
 #include <vector>
 #include <cstdint>
 

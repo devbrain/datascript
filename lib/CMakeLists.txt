@@ -64,6 +64,12 @@ set(PARSER_H ${LEMON_OUT}/datascript_parser.h)
 
 
 add_executable(lemon ${LEMON_DIR}/lemon.c)
+# Disable all warnings for third-party lemon tool
+if(MSVC)
+    target_compile_options(lemon PRIVATE /W0)
+else()
+    target_compile_options(lemon PRIVATE -w)
+endif()
 file(MAKE_DIRECTORY ${LEMON_OUT})
 
 add_custom_command(

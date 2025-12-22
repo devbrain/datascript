@@ -4,7 +4,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "../library_mode_generated/Buffer_16_impl.h"
+#include "../library_mode_generated/library_mode_parameterized_impl.h"
 
 using namespace generated;
 

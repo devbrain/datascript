@@ -4,7 +4,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "../library_mode_generated/LittleEndianData_impl.h"
+#include "../library_mode_generated/library_mode_endianness_impl.h"
 
 using namespace generated;
 

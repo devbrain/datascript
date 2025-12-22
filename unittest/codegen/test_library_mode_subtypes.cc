@@ -4,7 +4,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "../library_mode_generated/NetworkConfig_impl.h"
+#include "../library_mode_generated/library_mode_subtypes_impl.h"
 
 using namespace generated;
 

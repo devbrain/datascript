@@ -4,7 +4,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "../library_mode_generated/SimpleLabel_impl.h"
+#include "../library_mode_generated/library_mode_labels_alignment_impl.h"
 
 using namespace generated;
 

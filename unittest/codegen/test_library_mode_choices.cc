@@ -13,7 +13,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "Message_impl.h"
+#include "../library_mode_generated/library_mode_choices_impl.h"
 #include <sstream>
 #include <vector>
 #include <cstdint>

@@ -4,7 +4,7 @@
  */
 
 #include <doctest/doctest.h>
-#include "../library_mode_generated/LMSimpleConditional_impl.h"
+#include "../library_mode_generated/library_mode_conditionals_impl.h"
 
 using namespace generated;
 
