@@ -1,5 +1,7 @@
 # DataScript
 
+[![CI](https://github.com/devbrain/datascript/actions/workflows/ci.yml/badge.svg)](https://github.com/devbrain/datascript/actions/workflows/ci.yml)
+
 A modern compiler for binary data format specifications. DataScript lets you describe binary structures in a declarative language and generates production-ready parsing code in multiple languages.
 
 ## Why DataScript?
