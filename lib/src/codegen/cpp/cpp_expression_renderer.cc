@@ -15,6 +15,7 @@ namespace datascript::codegen {
 CppExpressionRenderer::CppExpressionRenderer(const ExprContext& ctx, const ir::bundle* module)
     : ctx_(ctx), module_(module)
 {
+    (void)module_;  // Reserved for future use
 }
 
 // ============================================================================

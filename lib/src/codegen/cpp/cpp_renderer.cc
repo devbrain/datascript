@@ -537,6 +537,25 @@ void CppRenderer::render_command(const Command& cmd) {
 void CppRenderer::render_module_start(const ModuleStartCommand& cmd) {
     (void)cmd;
     ctx_ << "#pragma once" << endl;
+    ctx_ << blank;
+    ctx_ << "// Suppress warnings in generated code" << endl;
+    ctx_ << "#if defined(_MSC_VER)" << endl;
+    ctx_ << "#pragma warning(push)" << endl;
+    ctx_ << "#pragma warning(disable: 4189)  // local variable initialized but not referenced" << endl;
+    ctx_ << "#pragma warning(disable: 4100)  // unreferenced formal parameter" << endl;
+    ctx_ << "#elif defined(__clang__)" << endl;
+    ctx_ << "#pragma clang diagnostic push" << endl;
+    ctx_ << "#pragma clang diagnostic ignored \"-Wunused-variable\"" << endl;
+    ctx_ << "#pragma clang diagnostic ignored \"-Wunused-but-set-variable\"" << endl;
+    ctx_ << "#pragma clang diagnostic ignored \"-Wunused-parameter\"" << endl;
+    ctx_ << "#pragma clang diagnostic ignored \"-Wparentheses-equality\"" << endl;
+    ctx_ << "#elif defined(__GNUC__)" << endl;
+    ctx_ << "#pragma GCC diagnostic push" << endl;
+    ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-variable\"" << endl;
+    ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"" << endl;
+    ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-parameter\"" << endl;
+    ctx_ << "#endif" << endl;
+    ctx_ << blank;
 
     // Emit C++-specific includes
     ctx_ << "#include <array>" << endl;

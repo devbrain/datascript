@@ -63,6 +63,13 @@ public:
     // Write #pragma once
     void write_pragma_once();
 
+    // Write warning suppression pragmas for generated code
+    // Call at start of file (after #pragma once) to suppress common warnings
+    void write_generated_warning_push();
+
+    // Write warning restoration pragmas (call at end of file)
+    void write_generated_warning_pop();
+
     // Write #include directive
     void write_include(const std::string& header, bool system = false);
 

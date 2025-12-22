@@ -310,6 +310,26 @@ std::string CppLibraryModeGenerator::generate_impl_header(
 
     // Write header guard and includes
     output << "#pragma once\n\n";
+
+    // Suppress warnings in generated code
+    output << "// Suppress warnings in generated code\n";
+    output << "#if defined(_MSC_VER)\n";
+    output << "#pragma warning(push)\n";
+    output << "#pragma warning(disable: 4189)  // local variable initialized but not referenced\n";
+    output << "#pragma warning(disable: 4100)  // unreferenced formal parameter\n";
+    output << "#elif defined(__clang__)\n";
+    output << "#pragma clang diagnostic push\n";
+    output << "#pragma clang diagnostic ignored \"-Wunused-variable\"\n";
+    output << "#pragma clang diagnostic ignored \"-Wunused-but-set-variable\"\n";
+    output << "#pragma clang diagnostic ignored \"-Wunused-parameter\"\n";
+    output << "#pragma clang diagnostic ignored \"-Wparentheses-equality\"\n";
+    output << "#elif defined(__GNUC__)\n";
+    output << "#pragma GCC diagnostic push\n";
+    output << "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n";
+    output << "#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"\n";
+    output << "#pragma GCC diagnostic ignored \"-Wunused-parameter\"\n";
+    output << "#endif\n\n";
+
     output << "#include \"" << std::filesystem::path(files.public_header).filename().string() << "\"\n";
     output << "#include <array>\n";
     output << "#include <vector>\n";
