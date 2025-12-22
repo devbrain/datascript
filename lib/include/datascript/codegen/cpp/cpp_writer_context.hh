@@ -4,6 +4,8 @@
 #include <string>
 #include <vector>
 #include <variant>
+#include <cstdint>
+#include <type_traits>
 
 namespace datascript::codegen {
 
@@ -34,6 +36,14 @@ public:
     CppWriterContext& operator<<(char c);
     CppWriterContext& operator<<(int value);
     CppWriterContext& operator<<(size_t value);
+    // Only enable uint64_t/int64_t overloads when they differ from size_t/int (macOS)
+    template<typename T, std::enable_if_t<
+        (std::is_same_v<T, uint64_t> && !std::is_same_v<uint64_t, size_t>) ||
+        (std::is_same_v<T, int64_t> && !std::is_same_v<int64_t, int> && !std::is_same_v<int64_t, long>), int> = 0>
+    CppWriterContext& operator<<(T value) {
+        writer_ << value;
+        return *this;
+    }
     CppWriterContext& operator<<(CodeWriter& (*manip)(CodeWriter&));
 
     // ========================================================================

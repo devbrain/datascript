@@ -268,3 +268,6 @@ target_compile_definitions(datascript_unittest PRIVATE UNITTEST_HOME="${CMAKE_CU
 
 # Apply warnings to tests (but don't treat as errors for flexibility in test code)
 target_set_warnings_no_error(datascript_unittest)
+
+# Register with CTest
+add_test(NAME datascript_unittest COMMAND datascript_unittest)

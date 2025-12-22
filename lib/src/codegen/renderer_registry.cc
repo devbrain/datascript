@@ -153,7 +153,7 @@ namespace datascript::codegen {
     std::string RendererRegistry::normalize_language_name(const std::string& name) {
         std::string normalized = name;
         std::transform(normalized.begin(), normalized.end(), normalized.begin(),
-                       [](unsigned char c) { return std::tolower(c); });
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
         return normalized;
     }
 } // namespace datascript::codegen

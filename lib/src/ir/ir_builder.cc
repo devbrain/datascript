@@ -931,13 +931,13 @@ size_t monomorphize_struct(const ast::struct_def* base_struct,
 
             // Apply pending label if any
             if (pending_label.has_value()) {
-                ir_field.label = std::move(pending_label.value());
+                ir_field.label = std::move(*pending_label);
                 pending_label.reset();
             }
 
             // Apply pending alignment if any
             if (pending_alignment.has_value()) {
-                ir_field.alignment = pending_alignment.value();
+                ir_field.alignment = *pending_alignment;
                 pending_alignment.reset();
             }
 
@@ -1482,13 +1482,13 @@ struct_def build_struct(const ast::struct_def& ast_struct,
 
             // Apply pending label if any
             if (pending_label.has_value()) {
-                ir_field.label = std::move(pending_label.value());
+                ir_field.label = std::move(*pending_label);
                 pending_label.reset();
             }
 
             // Apply pending alignment if any
             if (pending_alignment.has_value()) {
-                ir_field.alignment = pending_alignment.value();
+                ir_field.alignment = *pending_alignment;
                 pending_alignment.reset();
             }
 

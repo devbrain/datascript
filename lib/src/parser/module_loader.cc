@@ -233,7 +233,20 @@ module_set load_modules_with_imports(
     }
 
     // d) DATASCRIPT_PATH environment variable
+    // Suppress deprecation warning for getenv (safe for reading env vars)
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#elif defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable: 4996)
+#endif
     const char* env_path = std::getenv("DATASCRIPT_PATH");
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
     if (env_path) {
         std::string env_str(env_path);
         size_t pos = 0;

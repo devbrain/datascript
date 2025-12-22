@@ -15,6 +15,7 @@ add_subdirectory(lib)
 add_subdirectory(ds)
 
 if(DATASCRIPT_BUILD_TESTS)
+    enable_testing()
     add_subdirectory(unittest)
 endif()
 

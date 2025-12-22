@@ -3,6 +3,7 @@
 //
 
 #include <datascript/semantic.hh>
+#include <algorithm>
 
 namespace datascript::semantic {
     analysis_result analyze(module_set& modules, const analysis_options& opts) {

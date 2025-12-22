@@ -72,12 +72,14 @@ namespace {
         template<typename... Args>
         static InternalType* make(parser_context_t* ctx, Args&&... args) {
             using namespace datascript::ast;
-            ctx->ast_builder->temp_exprs.emplace_back(
-                ExternalType{
-                    make_pos(ctx),
-                    std::forward <Args>(args)...
+            ctx->ast_builder->temp_exprs.push_back(expr{
+                expr_node{
+                    ExternalType{
+                        make_pos(ctx),
+                        std::forward <Args>(args)...
+                    }
                 }
-            );
+            });
             return reinterpret_cast <InternalType*>(&ctx->ast_builder->temp_exprs.back());
         }
     };
