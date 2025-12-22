@@ -162,6 +162,20 @@ add_library(datascript STATIC
 target_include_directories(datascript
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
+        PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
+# External dependencies as SYSTEM to suppress warnings
+target_include_directories(datascript SYSTEM
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external)
+
+# Apply strict warnings to the library
+target_set_strict_warnings(datascript)
+
+# Disable warnings for generated C files (re2c scanner, lemon parser)
+# These are auto-generated and may contain code patterns that trigger warnings
+if(MSVC)
+    set_source_files_properties(${SCANNER_C} ${PARSER_C} PROPERTIES COMPILE_FLAGS "/W0")
+else()
+    set_source_files_properties(${SCANNER_C} ${PARSER_C} PROPERTIES COMPILE_FLAGS "-w")
+endif()
 

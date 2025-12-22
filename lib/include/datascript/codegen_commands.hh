@@ -146,8 +146,8 @@ struct DeclareFieldCommand : Command {
     const ir::type_ref* field_type;  // IR type, not language-specific string
     std::string doc_comment;
 
-    DeclareFieldCommand(const std::string& name, const ir::type_ref* type, const std::string& doc)
-        : Command(DeclareField), field_name(name), field_type(type), doc_comment(doc) {}
+    DeclareFieldCommand(const std::string& name, const ir::type_ref* ftype, const std::string& doc)
+        : Command(DeclareField), field_name(name), field_type(ftype), doc_comment(doc) {}
 };
 
 // ============================================================================
@@ -292,8 +292,8 @@ struct ReadFieldCommand : Command {
     const ir::type_ref* field_type;  // IR type, not language-specific string
     bool use_exceptions;
 
-    ReadFieldCommand(const std::string& name, const ir::type_ref* type, bool exc)
-        : Command(ReadField), field_name(name), field_type(type), use_exceptions(exc) {}
+    ReadFieldCommand(const std::string& name, const ir::type_ref* ftype, bool exc)
+        : Command(ReadField), field_name(name), field_type(ftype), use_exceptions(exc) {}
 };
 
 struct ReadArrayElementCommand : Command {
@@ -301,8 +301,8 @@ struct ReadArrayElementCommand : Command {
     const ir::type_ref* element_type;  // IR type, not language-specific string
     bool use_exceptions;
 
-    ReadArrayElementCommand(const std::string& elem, const ir::type_ref* type, bool exc)
-        : Command(ReadArrayElement), element_name(elem), element_type(type), use_exceptions(exc) {}
+    ReadArrayElementCommand(const std::string& elem, const ir::type_ref* etype, bool exc)
+        : Command(ReadArrayElement), element_name(elem), element_type(etype), use_exceptions(exc) {}
 };
 
 struct SeekToLabelCommand : Command {
@@ -338,8 +338,8 @@ struct AppendToArrayCommand : Command {
     const ir::type_ref* element_type;
     bool use_exceptions;
 
-    AppendToArrayCommand(const std::string& arr, const ir::type_ref* type, bool exc)
-        : Command(AppendToArray), array_name(arr), element_type(type), use_exceptions(exc) {}
+    AppendToArrayCommand(const std::string& arr, const ir::type_ref* etype, bool exc)
+        : Command(AppendToArray), array_name(arr), element_type(etype), use_exceptions(exc) {}
 };
 
 // ============================================================================
@@ -514,8 +514,8 @@ struct ReadPrimitiveToVariableCommand : Command {
     ir::type_kind primitive_type; // uint8, uint16, uint32, etc.
     bool use_exceptions;          // Exception vs safe mode
 
-    ReadPrimitiveToVariableCommand(const std::string& var, ir::type_kind type, bool exceptions)
-        : Command(ReadPrimitiveToVariable), target_var(var), primitive_type(type), use_exceptions(exceptions) {}
+    ReadPrimitiveToVariableCommand(const std::string& var, ir::type_kind ptype, bool exceptions)
+        : Command(ReadPrimitiveToVariable), target_var(var), primitive_type(ptype), use_exceptions(exceptions) {}
 };
 
 /// Extract a bitfield from byte variable(s) and assign to target field
@@ -535,18 +535,18 @@ struct ExtractBitfieldCommand : Command {
     std::optional<uint64_t> second_mask;          // Mask for second byte
 
     // Single-byte bitfield constructor
-    ExtractBitfieldCommand(const std::string& target, const std::string& source,
+    ExtractBitfieldCommand(const std::string& target, const std::string& src,
                           size_t offset, size_t width, uint64_t m)
-        : Command(ExtractBitfield), target_field(target), source_var(source),
+        : Command(ExtractBitfield), target_field(target), source_var(src),
           bit_offset(offset), bit_width(width), mask(m) {}
 
     // Multi-byte bitfield constructor
-    ExtractBitfieldCommand(const std::string& target, const std::string& source1, const std::string& source2,
+    ExtractBitfieldCommand(const std::string& target, const std::string& src1, const std::string& src2,
                           size_t offset, size_t width, uint64_t m,
                           size_t bits_first, uint64_t mask1, uint64_t mask2)
-        : Command(ExtractBitfield), target_field(target), source_var(source1),
+        : Command(ExtractBitfield), target_field(target), source_var(src1),
           bit_offset(offset), bit_width(width), mask(m),
-          source_var2(source2), bits_in_first_byte(bits_first),
+          source_var2(src2), bits_in_first_byte(bits_first),
           first_mask(mask1), second_mask(mask2) {}
 };
 
@@ -565,8 +565,8 @@ struct ThrowExceptionCommand : Command {
     std::string exception_type;
     const ir::expr* message_expr;
 
-    ThrowExceptionCommand(const std::string& type, const ir::expr* msg)
-        : Command(ThrowException), exception_type(type), message_expr(msg) {}
+    ThrowExceptionCommand(const std::string& exc_type, const ir::expr* msg)
+        : Command(ThrowException), exception_type(exc_type), message_expr(msg) {}
 };
 
 // ============================================================================
@@ -579,8 +579,8 @@ struct DeclareResultVariableCommand : Command {
     std::string result_name;      // Variable name (typically "result")
     const ir::struct_def* struct_type;  // The struct type being read
 
-    DeclareResultVariableCommand(const std::string& name, const ir::struct_def* type)
-        : Command(DeclareResultVariable), result_name(name), struct_type(type) {}
+    DeclareResultVariableCommand(const std::string& name, const ir::struct_def* stype)
+        : Command(DeclareResultVariable), result_name(name), struct_type(stype) {}
 };
 
 /// Set result.success = true in safe mode (indicates successful read).

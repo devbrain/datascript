@@ -115,22 +115,6 @@ namespace {
         return symbol_type + " '" + name + "' not found";
     }
 
-    /// Format "cannot be used as" error message
-    std::string format_cannot_use_as(const std::string& name,
-                                     const std::string& actual_type,
-                                     const std::string& expected_type) {
-        return "'" + name + "' is a " + actual_type + ", not a " + expected_type;
-    }
-
-    /// Format constraint message with operator name
-    std::string format_constraint_message(const std::string& constraint_name,
-                                         const std::string& var_name,
-                                         const std::string& op,
-                                         const std::string& condition) {
-        return "Constraint '" + constraint_name + "' " + condition +
-               " (comparing '" + var_name + "' with itself using " + op + ")";
-    }
-
     // Helper: validate identifier against target language keywords
     void validate_identifier(const std::string& identifier,
                             const ast::source_pos& pos,

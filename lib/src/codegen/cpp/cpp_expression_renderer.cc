@@ -24,7 +24,7 @@ CppExpressionRenderer::CppExpressionRenderer(const ExprContext& ctx, const ir::b
 std::string CppExpressionRenderer::render(const ir::expr& expr) {
     switch (expr.type) {
         case ir::expr::literal_int:
-            return render_literal_int(expr.int_value);
+            return render_literal_int(static_cast<int64_t>(expr.int_value));
 
         case ir::expr::literal_bool:
             return render_literal_bool(expr.bool_value);

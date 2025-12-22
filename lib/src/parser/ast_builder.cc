@@ -88,7 +88,7 @@ static std::string extract_string(const token_value_t* tok) {
     if (!tok || !tok->start || !tok->end) {
         return {};
     }
-    return std::string(tok->start, tok->end - tok->start);
+    return std::string(tok->start, static_cast<size_t>(tok->end - tok->start));
 }
 
 /* Helper to process docstring: extract content from Javadoc-style comment, strip leading asterisks and whitespace */
@@ -165,7 +165,7 @@ static std::optional <std::uint64_t> parse_integer_safe(
 
     const char* start = tok->start;
     const char* end = tok->end;
-    size_t len = end - start;
+    size_t len = static_cast<size_t>(end - start);
 
     if (len == 0) {
         parser_set_error(ctx, PARSER_ERROR_INVALID_LITERAL,
@@ -256,7 +256,7 @@ static std::string parse_string_literal(const token_value_t* tok) {
     const char* end = tok->end - 1;
 
     std::string result;
-    result.reserve(end - src);
+    result.reserve(static_cast<size_t>(end - src));
 
     while (src < end) {
         if (*src == '\\' && src + 1 < end) {
@@ -1125,7 +1125,7 @@ void parser_build_constraint(parser_context_t* ctx, token_value_t* name_tok, ast
         /* Build parameter vector */
         std::vector <param> param_vec;
         if (params && param_count > 0) {
-            param_vec.reserve(param_count);
+            param_vec.reserve(static_cast<size_t>(param_count));
             for (int i = 0; i < param_count; i++) {
                 auto* param_ptr = reinterpret_cast <param*>(params[i]);
                 param_vec.push_back(std::move(*param_ptr));

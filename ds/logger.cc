@@ -81,7 +81,7 @@ void Logger::bullet(const std::string& message, LogLevel min_level) {
 void Logger::indent(const std::string& message, int spaces, LogLevel min_level) {
     if (!should_log(min_level)) return;
 
-    std::cout << std::string(spaces, ' ') << message << "\n";
+    std::cout << std::string(static_cast<size_t>(spaces), ' ') << message << "\n";
 }
 
 void Logger::progress(const std::string& message) {

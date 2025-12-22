@@ -287,14 +287,14 @@ namespace {
         std::set<const ast::constant_def*>& evaluation_stack)
     {
         // Literals
-        if (auto* lit = std::get_if<ast::literal_int>(&expr.node)) {
-            return const_value::make_int(lit->value);
+        if (auto* int_lit = std::get_if<ast::literal_int>(&expr.node)) {
+            return const_value::make_int(static_cast<int64_t>(int_lit->value));
         }
-        else if (auto* lit = std::get_if<ast::literal_bool>(&expr.node)) {
-            return const_value::make_bool(lit->value);
+        else if (auto* bool_lit = std::get_if<ast::literal_bool>(&expr.node)) {
+            return const_value::make_bool(bool_lit->value);
         }
-        else if (auto* lit = std::get_if<ast::literal_string>(&expr.node)) {
-            return const_value::make_string(lit->value);
+        else if (auto* str_lit = std::get_if<ast::literal_string>(&expr.node)) {
+            return const_value::make_string(str_lit->value);
         }
         // Identifier - look up constant
         else if (auto* id = std::get_if<ast::identifier>(&expr.node)) {
@@ -450,20 +450,6 @@ namespace {
             }
         }
     }
-
-//Helper: Determine smallest integer type that fits a value
-static ast::primitive_type infer_discriminator_type_for_value(uint64_t max_value) {
-    ast::source_pos pos{"", 0, 0};  // Empty source position for inferred types
-    if (max_value <= UINT8_MAX) {
-        return ast::primitive_type{pos, false, 8, ast::endian::unspec};  // uint8
-    } else if (max_value <= UINT16_MAX) {
-        return ast::primitive_type{pos, false, 16, ast::endian::unspec};  // uint16
-    } else if (max_value <= UINT32_MAX) {
-        return ast::primitive_type{pos, false, 32, ast::endian::unspec};  // uint32
-    } else {
-        return ast::primitive_type{pos, false, 64, ast::endian::unspec};  // uint64
-    }
-}
 
 // Validate inline choice discriminator types (explicit type required)
 static void validate_choice_discriminator_types(

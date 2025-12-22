@@ -116,7 +116,7 @@ CppLibraryModeGenerator::LibraryFiles CppLibraryModeGenerator::get_filenames(
 
 std::string CppLibraryModeGenerator::generate_runtime_header(
     const std::string& namespace_name,
-    const LibraryFiles& files) const
+    [[maybe_unused]] const LibraryFiles& files) const
 {
     std::ostringstream output;
     CppWriterContext ctx(output);

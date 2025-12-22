@@ -22,22 +22,6 @@ namespace {
         return result;
     }
 
-    // Helper: add error diagnostic
-    void add_error(std::vector<diagnostic>& diags,
-                  const char* code,
-                  const std::string& message,
-                  const ast::source_pos& pos) {
-        diags.push_back(diagnostic{
-            diagnostic_level::error,
-            code,
-            message,
-            pos,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt
-        });
-    }
-
     // Helper: add error with suggestion
     void add_error_suggest(std::vector<diagnostic>& diags,
                           const char* code,
@@ -142,14 +126,14 @@ namespace {
             }
         }
         // Array types: recursively resolve element type
-        else if (auto* arr = std::get_if<ast::array_type_fixed>(&type_node.node)) {
-            resolve_array_type(*arr->element_type, analyzed, diags);
+        else if (auto* arr_fixed = std::get_if<ast::array_type_fixed>(&type_node.node)) {
+            resolve_array_type(*arr_fixed->element_type, analyzed, diags);
         }
-        else if (auto* arr = std::get_if<ast::array_type_range>(&type_node.node)) {
-            resolve_array_type(*arr->element_type, analyzed, diags);
+        else if (auto* arr_range = std::get_if<ast::array_type_range>(&type_node.node)) {
+            resolve_array_type(*arr_range->element_type, analyzed, diags);
         }
-        else if (auto* arr = std::get_if<ast::array_type_unsized>(&type_node.node)) {
-            resolve_array_type(*arr->element_type, analyzed, diags);
+        else if (auto* arr_unsized = std::get_if<ast::array_type_unsized>(&type_node.node)) {
+            resolve_array_type(*arr_unsized->element_type, analyzed, diags);
         }
         // Primitive types, string, bool, bitfield - no resolution needed
     }

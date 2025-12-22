@@ -265,3 +265,6 @@ target_include_directories(datascript_unittest PRIVATE
 )
 
 target_compile_definitions(datascript_unittest PRIVATE UNITTEST_HOME="${CMAKE_CURRENT_SOURCE_DIR}")
+
+# Apply warnings to tests (but don't treat as errors for flexibility in test code)
+target_set_warnings_no_error(datascript_unittest)

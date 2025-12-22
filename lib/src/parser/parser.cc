@@ -101,7 +101,7 @@ namespace {
                 }
 
                 /* Allocate from token pool with wraparound */
-                auto* token = &token_pool[token_pool_index];
+                auto* token = &token_pool[static_cast<size_t>(token_pool_index)];
                 token_pool_index = (token_pool_index + 1) % PARSER_TOKEN_POOL_SIZE;
 
                 /* Track high water mark */

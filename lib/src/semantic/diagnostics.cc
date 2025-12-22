@@ -12,7 +12,7 @@ namespace datascript::semantic {
 // Diagnostic Formatting
 // ============================================================================
 
-std::string diagnostic::format(bool show_source_line) const {
+std::string diagnostic::format([[maybe_unused]] bool show_source_line) const {
     std::ostringstream oss;
 
     // Format: file:line:column: level: message [code]
@@ -75,16 +75,16 @@ bool analysis_result::has_warnings() const {
 }
 
 size_t analysis_result::error_count() const {
-    return std::count_if(diagnostics.begin(), diagnostics.end(),
-        [](const auto& d) { return d.level == diagnostic_level::error; });
+    return static_cast<size_t>(std::count_if(diagnostics.begin(), diagnostics.end(),
+        [](const auto& d) { return d.level == diagnostic_level::error; }));
 }
 
 size_t analysis_result::warning_count() const {
-    return std::count_if(diagnostics.begin(), diagnostics.end(),
-        [](const auto& d) { return d.level == diagnostic_level::warning; });
+    return static_cast<size_t>(std::count_if(diagnostics.begin(), diagnostics.end(),
+        [](const auto& d) { return d.level == diagnostic_level::warning; }));
 }
 
-void analysis_result::print_diagnostics(std::ostream& os, bool use_color) const {
+void analysis_result::print_diagnostics(std::ostream& os, [[maybe_unused]] bool use_color) const {
     for (const auto& diag : diagnostics) {
         os << diag.format(false);
     }

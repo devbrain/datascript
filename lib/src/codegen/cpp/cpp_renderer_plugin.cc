@@ -57,17 +57,13 @@ REGISTER_RENDERER_PLUGIN(CppRendererPlugin);
  * Ensures CppRenderer is registered.
  *
  * This function is called by RendererRegistry::instance() to guarantee
- * that the static initializer has run, regardless of static initialization
- * order across translation units.
- *
- * The function forces the reference of the static registrar, ensuring
- * the CppRendererPlugin constructor has been called.
+ * that this translation unit is linked and its static initializers have run.
+ * The function body is intentionally empty - its mere existence forces the
+ * linker to include this translation unit, which triggers the static
+ * initialization of g_CppRendererPlugin_registrar above.
  */
 void ensure_cpp_renderer_registered() {
-    // Reference the static registrar to force its initialization
-    // The registrar's constructor registers the CppRenderer plugin
-    extern CppRendererPlugin_Registrar g_CppRendererPlugin_registrar;
-    (void)&g_CppRendererPlugin_registrar;  // Force reference
+    // Empty - existence of this function forces linkage of this translation unit
 }
 
 } // namespace datascript::codegen

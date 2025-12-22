@@ -55,7 +55,7 @@ ir::bundle KsyToIrBuilder::build_from_yaml(const fkyaml::node& root) {
         // Create main struct with capitalized module name
         std::string struct_name = module_name_;
         if (!struct_name.empty()) {
-            struct_name[0] = std::toupper(struct_name[0]);
+            struct_name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(struct_name[0])));
         }
 
         ir::struct_def main_struct;
@@ -154,7 +154,7 @@ ir::struct_def KsyToIrBuilder::build_struct(const std::string& name,
     // Capitalize first letter for struct name
     struct_def.name = name;
     if (!struct_def.name.empty()) {
-        struct_def.name[0] = std::toupper(struct_def.name[0]);
+        struct_def.name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(struct_def.name[0])));
     }
 
     // Extract doc comment if present
@@ -179,7 +179,7 @@ ir::enum_def KsyToIrBuilder::build_enum(const std::string& name,
     // Capitalize first letter for enum name
     enum_def.name = name;
     if (!enum_def.name.empty()) {
-        enum_def.name[0] = std::toupper(enum_def.name[0]);
+        enum_def.name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(enum_def.name[0])));
     }
 
     // Kaitai enums are simple mappings of value -> name
@@ -231,16 +231,16 @@ ir::enum_def KsyToIrBuilder::build_enum(const std::string& name,
             value = std::stoull(key_str);
         }
 
-        std::string name = (*it).get_value<std::string>();
+        std::string item_name = (*it).get_value<std::string>();
 
         ir::enum_def::item item;
         item.value = static_cast<uint64_t>(value);
-        item.name = name;
+        item.name = item_name;
         item.source = {"", 0, 0};
 
         // Capitalize first letter
         if (!item.name.empty()) {
-            item.name[0] = std::toupper(item.name[0]);
+            item.name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(item.name[0])));
         }
 
         enum_def.items.push_back(std::move(item));

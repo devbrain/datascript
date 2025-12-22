@@ -50,7 +50,7 @@ public:
 
 private:
     const ExprContext& ctx_;
-    const ir::bundle* module_;
+    [[maybe_unused]] const ir::bundle* module_;
 
     // Literal rendering
     std::string render_literal_int(int64_t value);

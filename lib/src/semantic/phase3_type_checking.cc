@@ -82,51 +82,6 @@ namespace {
         return "unknown";
     }
 
-    // Convert ast::type to readable string for error messages
-    std::string type_to_string(const ast::type& t) {
-        if (std::holds_alternative<ast::primitive_type>(t.node)) {
-            const auto& prim = std::get<ast::primitive_type>(t.node);
-            std::string name = prim.is_signed ? "int" : "uint";
-            name += std::to_string(prim.bits);
-            return name;  // e.g., "uint32", "int8"
-        }
-        if (std::holds_alternative<ast::bool_type>(t.node)) {
-            return "bool";
-        }
-        if (std::holds_alternative<ast::string_type>(t.node)) {
-            return "string";
-        }
-        if (std::holds_alternative<ast::array_type_fixed>(t.node)) {
-            const auto& arr = std::get<ast::array_type_fixed>(t.node);
-            return type_to_string(*arr.element_type) + "[...]";
-        }
-        if (std::holds_alternative<ast::array_type_range>(t.node)) {
-            const auto& arr = std::get<ast::array_type_range>(t.node);
-            return type_to_string(*arr.element_type) + "[..]";
-        }
-        if (std::holds_alternative<ast::array_type_unsized>(t.node)) {
-            const auto& arr = std::get<ast::array_type_unsized>(t.node);
-            return type_to_string(*arr.element_type) + "[]";
-        }
-        if (std::holds_alternative<ast::qualified_name>(t.node)) {
-            const auto& qname = std::get<ast::qualified_name>(t.node);
-            std::string result;
-            for (size_t i = 0; i < qname.parts.size(); ++i) {
-                if (i > 0) result += ".";
-                result += qname.parts[i];
-            }
-            return result;
-        }
-        if (std::holds_alternative<ast::bit_field_type_fixed>(t.node)) {
-            const auto& bf = std::get<ast::bit_field_type_fixed>(t.node);
-            return "bit:" + std::to_string(bf.width);
-        }
-        if (std::holds_alternative<ast::bit_field_type_expr>(t.node)) {
-            return "bit:<expr>";
-        }
-        return "unknown";
-    }
-
     // Convert binary operator to readable string for error messages
     std::string op_to_string(ast::binary_op op) {
         switch (op) {
@@ -161,14 +116,6 @@ namespace {
             case ast::unary_op::log_not: return "!";
         }
         return "?";
-    }
-
-    bool types_compatible(const ast::type& t1, const ast::type& t2) {
-        auto cat1 = categorize_type(t1);
-        auto cat2 = categorize_type(t2);
-
-        // Same category = compatible (simplified)
-        return cat1 == cat2;
     }
 
     // ========================================================================

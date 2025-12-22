@@ -58,13 +58,13 @@ CppRenderer::CppRenderer()
       error_handling_mode_(cpp_options::both),
       in_struct_(false),
       in_method_(false),
+      current_enum_is_bitmask_(false),
       in_choice_(false),
       first_choice_case_(false),
       label_counter_(0),
       current_method_kind_(StartMethodCommand::MethodKind::Custom),
       current_method_target_struct_(nullptr),
-      current_method_use_exceptions_(false),
-      current_enum_is_bitmask_(false)
+      current_method_use_exceptions_(false)
 {
     expr_context_.in_struct_method = false;
     expr_context_.use_safe_reads = true;

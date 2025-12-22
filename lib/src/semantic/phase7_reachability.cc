@@ -102,19 +102,19 @@ namespace {
         usage_tracker& tracker)
     {
         // Track array element types
-        if (auto* arr = std::get_if<ast::array_type_fixed>(&type_node.node)) {
-            track_type_usage(*arr->element_type, analyzed, tracker);
-            track_expr_usage(arr->size, analyzed, tracker);
+        if (auto* arr_fixed = std::get_if<ast::array_type_fixed>(&type_node.node)) {
+            track_type_usage(*arr_fixed->element_type, analyzed, tracker);
+            track_expr_usage(arr_fixed->size, analyzed, tracker);
         }
-        else if (auto* arr = std::get_if<ast::array_type_range>(&type_node.node)) {
-            track_type_usage(*arr->element_type, analyzed, tracker);
-            if (arr->min_size) {
-                track_expr_usage(arr->min_size.value(), analyzed, tracker);
+        else if (auto* arr_range = std::get_if<ast::array_type_range>(&type_node.node)) {
+            track_type_usage(*arr_range->element_type, analyzed, tracker);
+            if (arr_range->min_size) {
+                track_expr_usage(arr_range->min_size.value(), analyzed, tracker);
             }
-            track_expr_usage(arr->max_size, analyzed, tracker);
+            track_expr_usage(arr_range->max_size, analyzed, tracker);
         }
-        else if (auto* arr = std::get_if<ast::array_type_unsized>(&type_node.node)) {
-            track_type_usage(*arr->element_type, analyzed, tracker);
+        else if (auto* arr_unsized = std::get_if<ast::array_type_unsized>(&type_node.node)) {
+            track_type_usage(*arr_unsized->element_type, analyzed, tracker);
         }
         // Track user-defined types
         else if (auto* qname = std::get_if<ast::qualified_name>(&type_node.node)) {

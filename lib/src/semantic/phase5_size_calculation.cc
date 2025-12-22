@@ -27,22 +27,6 @@ namespace {
         });
     }
 
-    // Helper: add warning diagnostic
-    void add_warning(std::vector<diagnostic>& diags,
-                    const char* code,
-                    const std::string& message,
-                    const ast::source_pos& pos) {
-        diags.push_back(diagnostic{
-            diagnostic_level::warning,
-            code,
-            message,
-            pos,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt
-        });
-    }
-
     // Helper: align offset to alignment requirement
     size_t align_offset(size_t offset, size_t alignment) {
         if (alignment == 0) return offset;
@@ -143,7 +127,7 @@ namespace {
         const ast::qualified_name& qname,
         const analyzed_module_set& analyzed,
         std::vector<diagnostic>& diags,
-        const ast::source_pos& pos)
+        [[maybe_unused]] const ast::source_pos& pos)
     {
         // Look up the resolved type
         auto it = analyzed.resolved_types.find(&qname);
@@ -160,7 +144,7 @@ namespace {
         auto& resolved = it->second;
 
         // Handle different type kinds
-        if (auto* struct_def = std::get_if<const ast::struct_def*>(&resolved)) {
+        if (std::get_if<const ast::struct_def*>(&resolved)) {
             // Struct size already calculated (or will be)
             // For now, return placeholder
             type_info info;
@@ -174,7 +158,7 @@ namespace {
             // Enum has same size as its base type
             return calculate_type_info((*enum_def)->base_type, analyzed, diags);
         }
-        else if (auto* union_def = std::get_if<const ast::union_def*>(&resolved)) {
+        else if (std::get_if<const ast::union_def*>(&resolved)) {
             // Union size = max of all field sizes
             type_info info;
             info.size = 0;  // Will be calculated separately
@@ -183,7 +167,7 @@ namespace {
             info.is_signed = false;
             return info;
         }
-        else if (auto* choice_def = std::get_if<const ast::choice_def*>(&resolved)) {
+        else if (std::get_if<const ast::choice_def*>(&resolved)) {
             // Choice size is variable (depends on selector)
             type_info info;
             info.size = std::numeric_limits<size_t>::max();
@@ -245,22 +229,22 @@ namespace {
                     std::nullopt, std::nullopt, analyzed, diags);
             }
         }
-        else if (auto* arr = std::get_if<ast::array_type_range>(&type_node.node)) {
+        else if (auto* arr_range = std::get_if<ast::array_type_range>(&type_node.node)) {
             // Try to evaluate min/max as compile-time constants
             // If they're not constants (e.g., field references), that's OK - they'll be
             // validated at runtime. We just won't have compile-time size bounds.
             std::optional<uint64_t> min_val;
-            if (arr->min_size) {
-                min_val = phases::evaluate_constant_uint(*arr->min_size, analyzed, diags);
+            if (arr_range->min_size) {
+                min_val = phases::evaluate_constant_uint(*arr_range->min_size, analyzed, diags);
             }
 
-            auto max_val = phases::evaluate_constant_uint(arr->max_size, analyzed, diags);
+            auto max_val = phases::evaluate_constant_uint(arr_range->max_size, analyzed, diags);
 
-            return calculate_array_type_info(*arr->element_type, std::nullopt,
+            return calculate_array_type_info(*arr_range->element_type, std::nullopt,
                 min_val, max_val, analyzed, diags);
         }
-        else if (auto* arr = std::get_if<ast::array_type_unsized>(&type_node.node)) {
-            return calculate_array_type_info(*arr->element_type, std::nullopt,
+        else if (auto* arr_unsized = std::get_if<ast::array_type_unsized>(&type_node.node)) {
+            return calculate_array_type_info(*arr_unsized->element_type, std::nullopt,
                 std::nullopt, std::nullopt, analyzed, diags);
         }
         else if (auto* qname = std::get_if<ast::qualified_name>(&type_node.node)) {

@@ -17,7 +17,7 @@ const std::set<std::string> DataScriptRenderer::keywords_ = {
 DataScriptRenderer::DataScriptRenderer() = default;
 
 std::string DataScriptRenderer::render_module(const ir::bundle& bundle,
-                                             const RenderOptions& options) {
+                                             [[maybe_unused]] const RenderOptions& options) {
     output_.str("");
     output_.clear();
     writer_ = std::make_unique<CodeWriter>(output_);

@@ -1204,7 +1204,7 @@ void CommandBuilder::emit_fixed_array_read(
     // Create owned expression for array size
     ir::expr size_literal;
     size_literal.type = ir::expr::literal_int;
-    size_literal.int_value = static_cast<int64_t>(array_size);
+    size_literal.int_value = array_size;
     const ir::expr* size_expr = create_expression(std::move(size_literal));
 
     emit_fixed_array_read_expr(field_name, element_type, size_expr, use_exceptions);
@@ -1419,7 +1419,7 @@ void CommandBuilder::emit_module_constants(const ir::bundle& module) {
         // Create integer literal expression
         ir::expr value_expr;
         value_expr.type = ir::expr::literal_int;
-        value_expr.int_value = static_cast<int64_t>(value);
+        value_expr.int_value = value;
         const ir::expr* value_ptr = create_expression(std::move(value_expr));
 
         emit_constant(name, type_ptr, value_ptr);
@@ -1433,7 +1433,7 @@ void CommandBuilder::emit_module_enums(const ir::bundle& module) {
         for (size_t i = 0; i < enum_def.items.size(); ++i) {
             const auto& item = enum_def.items[i];
             bool is_last = (i == enum_def.items.size() - 1);
-            emit_enum_item(item.name, item.value, is_last);
+            emit_enum_item(item.name, static_cast<int64_t>(item.value), is_last);
         }
         emit_enum_end();
     }
@@ -1566,7 +1566,7 @@ void CommandBuilder::emit_module_structs_and_choices(const ir::bundle& module, c
             for (const auto& stmt : func.body) {
                 if (auto* ret_stmt = std::get_if<ir::return_statement>(&stmt)) {
                     emit_return_expr(&ret_stmt->value);
-                } else if (auto* expr_stmt = std::get_if<ir::expression_statement>(&stmt)) {
+                } else if (std::get_if<ir::expression_statement>(&stmt)) {
                     // Expression statements (for side effects, though rare in DataScript)
                     emit_comment("Expression statement");
                     // Just emit the expression (it will be discarded)

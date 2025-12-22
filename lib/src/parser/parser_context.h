@@ -25,6 +25,9 @@ enum parser_error_code {
 };
 
 /* Error reporting */
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((format(printf, 3, 4)))
+#endif
 void parser_set_error(parser_context_t* ctx, enum parser_error_code code, const char* format, ...);
 
 /* Get token pool usage statistics */
