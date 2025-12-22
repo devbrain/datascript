@@ -186,19 +186,22 @@ std::vector<OptionDescription> CppRenderer::get_options() const {
             "exceptions",
             OptionType::Bool,
             "Use exceptions for error handling",
-            "true"
+            "true",
+            {}  // choices (not applicable for Bool)
         },
         {
             "output-name",
             OptionType::String,
             "Override output filename (default: derive from struct name)",
-            std::nullopt
+            std::nullopt,
+            {}  // choices (not applicable for String)
         },
         {
             "enum-to-string",
             OptionType::Bool,
             "Generate enum-to-string conversion functions",
-            "false"
+            "false",
+            {}  // choices (not applicable for Bool)
         },
         {
             "mode",

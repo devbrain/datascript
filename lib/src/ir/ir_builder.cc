@@ -937,7 +937,16 @@ size_t monomorphize_struct(const ast::struct_def* base_struct,
 
             // Apply pending alignment if any
             if (pending_alignment.has_value()) {
+                // GCC 11 false positive: -Wmaybe-uninitialized doesn't understand
+                // that has_value() guarantees the optional contains a value
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 ir_field.alignment = *pending_alignment;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
                 pending_alignment.reset();
             }
 
@@ -1488,7 +1497,16 @@ struct_def build_struct(const ast::struct_def& ast_struct,
 
             // Apply pending alignment if any
             if (pending_alignment.has_value()) {
+                // GCC 11 false positive: -Wmaybe-uninitialized doesn't understand
+                // that has_value() guarantees the optional contains a value
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
                 ir_field.alignment = *pending_alignment;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
                 pending_alignment.reset();
             }
 

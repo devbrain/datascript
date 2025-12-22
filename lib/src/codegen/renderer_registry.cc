@@ -10,6 +10,13 @@
 #include <cctype>
 
 namespace datascript::codegen {
+
+    // Force plugin initialization by calling a function that triggers
+    // static initialization in cpp_renderer_plugin.cc
+    // This ensures CppRenderer is registered before first use
+    // Note: extern declaration must be at namespace scope for MSVC compatibility
+    extern void ensure_cpp_renderer_registered(); // Defined in cpp_renderer_plugin.cc
+
     // ============================================================================
     // Singleton Access
     // ============================================================================
@@ -17,10 +24,6 @@ namespace datascript::codegen {
     RendererRegistry& RendererRegistry::instance() {
         static RendererRegistry registry;
 
-        // Force plugin initialization by calling a function that triggers
-        // static initialization in cpp_renderer_plugin.cc
-        // This ensures CppRenderer is registered before first use
-        extern void ensure_cpp_renderer_registered(); // Defined in cpp_renderer_plugin.cc
         static bool initialized = false;
         if (!initialized) {
             ensure_cpp_renderer_registered();
