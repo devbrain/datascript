@@ -189,7 +189,7 @@ TEST_SUITE("Codegen - C++ Renderer") {
         renderer.render_commands(commands);
         std::string output = renderer.get_output();
 
-        CHECK(contains(output, "uint32_t count;"));
+        CHECK(contains(output, "uint32_t count{};"));
     }
 
     TEST_CASE("Render variable declaration with initialization") {

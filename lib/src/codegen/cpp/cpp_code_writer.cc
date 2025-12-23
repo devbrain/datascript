@@ -48,22 +48,29 @@ void CppCodeWriter::write_pragma_once() {
 void CppCodeWriter::write_generated_warning_push() {
     write_line("");
     write_line("// Suppress warnings in generated code");
-    write_line("#if defined(_MSC_VER)");
-    write_line("#pragma warning(push)");
-    write_line("#pragma warning(disable: 4189)  // local variable initialized but not referenced");
-    write_line("#pragma warning(disable: 4100)  // unreferenced formal parameter");
-    write_line("#elif defined(__clang__)");
+    write_line("// Note: __clang__ must be checked before _MSC_VER because clang-cl defines both");
+    write_line("#if defined(__clang__)");
     write_line("#pragma clang diagnostic push");
     write_line("#pragma clang diagnostic ignored \"-Wunused-variable\"");
     write_line("#pragma clang diagnostic ignored \"-Wunused-but-set-variable\"");
     write_line("#pragma clang diagnostic ignored \"-Wunused-parameter\"");
     write_line("#pragma clang diagnostic ignored \"-Wparentheses-equality\"");
+    write_line("#pragma clang diagnostic ignored \"-Wsign-conversion\"");
+    write_line("#pragma clang diagnostic ignored \"-Wimplicit-int-conversion\"");
+    write_line("#elif defined(_MSC_VER)");
+    write_line("#pragma warning(push)");
+    write_line("#pragma warning(disable: 4189)  // local variable initialized but not referenced");
+    write_line("#pragma warning(disable: 4100)  // unreferenced formal parameter");
+    write_line("#pragma warning(disable: 4244)  // conversion from 'type1' to 'type2', possible loss of data");
+    write_line("#pragma warning(disable: 4267)  // conversion from 'size_t' to 'type', possible loss of data");
     write_line("#elif defined(__GNUC__)");
     write_line("#pragma GCC diagnostic push");
     write_line("#pragma GCC diagnostic ignored \"-Wunused-variable\"");
     write_line("#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"");
     write_line("#pragma GCC diagnostic ignored \"-Wunused-parameter\"");
     write_line("#pragma GCC diagnostic ignored \"-Wstringop-overflow\"");
+    write_line("#pragma GCC diagnostic ignored \"-Wsign-conversion\"");
+    write_line("#pragma GCC diagnostic ignored \"-Wconversion\"");
     write_line("#endif");
     write_line("");
 }
@@ -71,9 +78,11 @@ void CppCodeWriter::write_generated_warning_push() {
 void CppCodeWriter::write_generated_warning_pop() {
     write_line("");
     write_line("// Restore warning state");
-    write_line("#if defined(_MSC_VER)");
+    write_line("#if defined(__clang__)");
+    write_line("#pragma clang diagnostic pop");
+    write_line("#elif defined(_MSC_VER)");
     write_line("#pragma warning(pop)");
-    write_line("#elif defined(__clang__) || defined(__GNUC__)");
+    write_line("#elif defined(__GNUC__)");
     write_line("#pragma GCC diagnostic pop");
     write_line("#endif");
 }

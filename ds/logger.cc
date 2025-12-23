@@ -1,12 +1,23 @@
 #include "logger.hh"
 #include "vendor/termcolor.hpp"
 
+#ifdef _WIN32
+#include <windows.h>
+#include <io.h>
+#include <fcntl.h>
+#endif
+
 namespace datascript::driver {
 
 Logger::Logger(LogLevel level, ColorMode color)
     : level_(level)
     , color_mode_(color)
 {
+#ifdef _WIN32
+    // Enable UTF-8 output on Windows console
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+
     // Configure color mode for all streams
     switch (color_mode_) {
         case ColorMode::Always:

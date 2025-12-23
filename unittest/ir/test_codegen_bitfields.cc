@@ -61,7 +61,7 @@ struct Flags {
 
             // Verify bitfield batching: should read byte once and extract both fields
             CHECK(cpp_code.find("// Reading bitfield sequence") != std::string::npos);
-            CHECK(cpp_code.find("uint8_t _bitfield_byte0;") != std::string::npos);
+            CHECK(cpp_code.find("uint8_t _bitfield_byte0{};") != std::string::npos);
             CHECK(cpp_code.find("_bitfield_byte0 = read_uint8(data, end);") != std::string::npos);
             CHECK(cpp_code.find("obj.priority = (_bitfield_byte0 & 0x7);") != std::string::npos);  // 0x7 = 0b111
             CHECK(cpp_code.find("obj.reserved = ((_bitfield_byte0 >> 3) & 0x1F);") != std::string::npos); // 0x1F = 0b11111, shifted by 3 bits
@@ -100,11 +100,11 @@ struct BitSizes {
         // Verify bitfield batching: 4+12+24 = 40 bits = 5 bytes total
         CHECK(cpp_code.find("// Reading bitfield sequence") != std::string::npos);
         // Should read 5 bytes total for all three fields
-        CHECK(cpp_code.find("uint8_t _bitfield_byte0;") != std::string::npos);
-        CHECK(cpp_code.find("uint8_t _bitfield_byte1;") != std::string::npos);
-        CHECK(cpp_code.find("uint8_t _bitfield_byte2;") != std::string::npos);
-        CHECK(cpp_code.find("uint8_t _bitfield_byte3;") != std::string::npos);
-        CHECK(cpp_code.find("uint8_t _bitfield_byte4;") != std::string::npos);
+        CHECK(cpp_code.find("uint8_t _bitfield_byte0{};") != std::string::npos);
+        CHECK(cpp_code.find("uint8_t _bitfield_byte1{};") != std::string::npos);
+        CHECK(cpp_code.find("uint8_t _bitfield_byte2{};") != std::string::npos);
+        CHECK(cpp_code.find("uint8_t _bitfield_byte3{};") != std::string::npos);
+        CHECK(cpp_code.find("uint8_t _bitfield_byte4{};") != std::string::npos);
     }
 
     TEST_CASE("Bit field type boundaries") {
@@ -223,7 +223,7 @@ struct SingleBit {
         // Verify single bit handling with batching
         CHECK(cpp_code.find("uint8_t flag;") != std::string::npos);
         CHECK(cpp_code.find("// Reading bitfield sequence") != std::string::npos);
-        CHECK(cpp_code.find("uint8_t _bitfield_byte0;") != std::string::npos);
+        CHECK(cpp_code.find("uint8_t _bitfield_byte0{};") != std::string::npos);
         CHECK(cpp_code.find("_bitfield_byte0 = read_uint8(data, end);") != std::string::npos);
         CHECK(cpp_code.find("obj.flag = (_bitfield_byte0 & 0x1);") != std::string::npos); // 0x1 = 0b1
     }
@@ -258,7 +258,7 @@ struct BitFlags {
 
         // Verify bitfield batching: should read byte once and extract both fields
         CHECK(cpp_code.find("// Reading bitfield sequence") != std::string::npos);
-        CHECK(cpp_code.find("uint8_t _bitfield_byte0;") != std::string::npos);
+        CHECK(cpp_code.find("uint8_t _bitfield_byte0{};") != std::string::npos);
         CHECK(cpp_code.find("_bitfield_byte0 = read_uint8(data, end);") != std::string::npos);
         CHECK(cpp_code.find("obj.priority = (_bitfield_byte0 & 0x7);") != std::string::npos);
         CHECK(cpp_code.find("obj.flags = ((_bitfield_byte0 >> 3) & 0x1F);") != std::string::npos);

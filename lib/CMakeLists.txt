@@ -31,15 +31,28 @@ if(NOT RE2C_EXECUTABLE)
     endif()
 
     # Build re2c as external project (since it's a tool, not a library)
+    # Use BUILD_COMMAND to only build the re2c target, skipping tests
+    # Disable all optional features we don't need (Go, Rust backends, docs, libs, benchmarks)
+    # Suppress warnings from third-party code
+    if(MSVC)
+        set(RE2C_WARNING_FLAGS "/W0")
+    else()
+        set(RE2C_WARNING_FLAGS "-w")
+    endif()
     include(ExternalProject)
     ExternalProject_Add(
         re2c_build
         SOURCE_DIR ${re2c_SOURCE_DIR}
         CMAKE_ARGS
             -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_C_FLAGS=${RE2C_WARNING_FLAGS}
+            -DCMAKE_CXX_FLAGS=${RE2C_WARNING_FLAGS}
             -DRE2C_BUILD_RE2GO=OFF
             -DRE2C_BUILD_RE2RUST=OFF
+            -DRE2C_BUILD_LIBS=OFF
             -DRE2C_BUILD_BENCHMARKS=OFF
+            -DRE2C_REBUILD_DOCS=OFF
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target re2c
         INSTALL_COMMAND ""
         BUILD_BYPRODUCTS <BINARY_DIR>/re2c
     )

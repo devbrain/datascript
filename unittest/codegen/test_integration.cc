@@ -201,7 +201,7 @@ TEST_SUITE("Codegen - Integration Tests") {
         std::string code = renderer.get_output();
 
         CHECK(contains(code, "static Standalone read_Standalone(const uint8_t*& data, const uint8_t* end) {"));
-        CHECK(contains(code, "Standalone result;"));
+        CHECK(contains(code, "Standalone result{};"));
         CHECK(contains(code, "return result;"));
     }
 

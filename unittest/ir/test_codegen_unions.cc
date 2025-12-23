@@ -101,8 +101,9 @@ union Data {
         opts.namespace_name = "test";
         std::string cpp_code = codegen::generate_cpp_header(ir, opts);
 
-        // Verify nested struct in union
-        CHECK(cpp_code.find("Point as_point;") != std::string::npos);
+        // Verify nested struct in union (uses std::variant with accessor methods)
+        // Accessor is as_<field_name>, and field is named "as_point", so accessor is "as_as_point"
+        CHECK(cpp_code.find("Point* as_as_point()") != std::string::npos);
         CHECK(cpp_code.find("Point::read") != std::string::npos);
     }
 }

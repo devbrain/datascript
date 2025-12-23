@@ -320,23 +320,31 @@ std::string CppLibraryModeGenerator::generate_impl_header(
     output << "#pragma once\n\n";
 
     // Suppress warnings in generated code
+    // Note: __clang__ must be checked before _MSC_VER because clang-cl defines both
     output << "// Suppress warnings in generated code\n";
-    output << "#if defined(_MSC_VER)\n";
-    output << "#pragma warning(push)\n";
-    output << "#pragma warning(disable: 4189)  // local variable initialized but not referenced\n";
-    output << "#pragma warning(disable: 4100)  // unreferenced formal parameter\n";
-    output << "#elif defined(__clang__)\n";
+    output << "// Note: __clang__ must be checked before _MSC_VER because clang-cl defines both\n";
+    output << "#if defined(__clang__)\n";
     output << "#pragma clang diagnostic push\n";
     output << "#pragma clang diagnostic ignored \"-Wunused-variable\"\n";
     output << "#pragma clang diagnostic ignored \"-Wunused-but-set-variable\"\n";
     output << "#pragma clang diagnostic ignored \"-Wunused-parameter\"\n";
     output << "#pragma clang diagnostic ignored \"-Wparentheses-equality\"\n";
+    output << "#pragma clang diagnostic ignored \"-Wsign-conversion\"\n";
+    output << "#pragma clang diagnostic ignored \"-Wimplicit-int-conversion\"\n";
+    output << "#elif defined(_MSC_VER)\n";
+    output << "#pragma warning(push)\n";
+    output << "#pragma warning(disable: 4189)  // local variable initialized but not referenced\n";
+    output << "#pragma warning(disable: 4100)  // unreferenced formal parameter\n";
+    output << "#pragma warning(disable: 4244)  // conversion from 'type1' to 'type2', possible loss of data\n";
+    output << "#pragma warning(disable: 4267)  // conversion from 'size_t' to 'type', possible loss of data\n";
     output << "#elif defined(__GNUC__)\n";
     output << "#pragma GCC diagnostic push\n";
     output << "#pragma GCC diagnostic ignored \"-Wunused-variable\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wunused-parameter\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wstringop-overflow\"\n";
+    output << "#pragma GCC diagnostic ignored \"-Wsign-conversion\"\n";
+    output << "#pragma GCC diagnostic ignored \"-Wconversion\"\n";
     output << "#endif\n\n";
 
     output << "#include \"" << std::filesystem::path(files.public_header).filename().string() << "\"\n";

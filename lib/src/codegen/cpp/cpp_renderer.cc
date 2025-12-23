@@ -539,22 +539,29 @@ void CppRenderer::render_module_start(const ModuleStartCommand& cmd) {
     ctx_ << "#pragma once" << endl;
     ctx_ << blank;
     ctx_ << "// Suppress warnings in generated code" << endl;
-    ctx_ << "#if defined(_MSC_VER)" << endl;
-    ctx_ << "#pragma warning(push)" << endl;
-    ctx_ << "#pragma warning(disable: 4189)  // local variable initialized but not referenced" << endl;
-    ctx_ << "#pragma warning(disable: 4100)  // unreferenced formal parameter" << endl;
-    ctx_ << "#elif defined(__clang__)" << endl;
+    ctx_ << "// Note: __clang__ must be checked before _MSC_VER because clang-cl defines both" << endl;
+    ctx_ << "#if defined(__clang__)" << endl;
     ctx_ << "#pragma clang diagnostic push" << endl;
     ctx_ << "#pragma clang diagnostic ignored \"-Wunused-variable\"" << endl;
     ctx_ << "#pragma clang diagnostic ignored \"-Wunused-but-set-variable\"" << endl;
     ctx_ << "#pragma clang diagnostic ignored \"-Wunused-parameter\"" << endl;
     ctx_ << "#pragma clang diagnostic ignored \"-Wparentheses-equality\"" << endl;
+    ctx_ << "#pragma clang diagnostic ignored \"-Wsign-conversion\"" << endl;
+    ctx_ << "#pragma clang diagnostic ignored \"-Wimplicit-int-conversion\"" << endl;
+    ctx_ << "#elif defined(_MSC_VER)" << endl;
+    ctx_ << "#pragma warning(push)" << endl;
+    ctx_ << "#pragma warning(disable: 4189)  // local variable initialized but not referenced" << endl;
+    ctx_ << "#pragma warning(disable: 4100)  // unreferenced formal parameter" << endl;
+    ctx_ << "#pragma warning(disable: 4244)  // conversion from 'type1' to 'type2', possible loss of data" << endl;
+    ctx_ << "#pragma warning(disable: 4267)  // conversion from 'size_t' to 'type', possible loss of data" << endl;
     ctx_ << "#elif defined(__GNUC__)" << endl;
     ctx_ << "#pragma GCC diagnostic push" << endl;
     ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-variable\"" << endl;
     ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-but-set-variable\"" << endl;
     ctx_ << "#pragma GCC diagnostic ignored \"-Wunused-parameter\"" << endl;
     ctx_ << "#pragma GCC diagnostic ignored \"-Wstringop-overflow\"" << endl;
+    ctx_ << "#pragma GCC diagnostic ignored \"-Wsign-conversion\"" << endl;
+    ctx_ << "#pragma GCC diagnostic ignored \"-Wconversion\"" << endl;
     ctx_ << "#endif" << endl;
     ctx_ << blank;
 
@@ -1459,7 +1466,9 @@ void CppRenderer::render_declare_variable(const DeclareVariableCommand& cmd) {
         std::string init = render_expression(cmd.init_expr);
         ctx_ << type_str + " " + cmd.var_name + " = " + init + ";" << endl;
     } else {
-        ctx_ << type_str + " " + cmd.var_name + ";" << endl;
+        // Use value initialization {} to zero-initialize all members
+        // This prevents "used uninitialized" warnings for conditional fields
+        ctx_ << type_str + " " + cmd.var_name + "{};" << endl;
     }
 
     // Add to expression context so subsequent expressions know this is a local variable
