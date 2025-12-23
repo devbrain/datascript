@@ -679,11 +679,13 @@ void CppRenderer::render_end_enum(const EndEnumCommand& cmd) {
 
         // Comparison operators with int (for comparing with 0)
         ctx_.start_inline_function("bool", "operator==", type + " a, int b");
-        ctx_ << "return static_cast<std::underlying_type_t<" + type + ">>(a) == b;" << endl;
+        ctx_ << "using underlying = std::underlying_type_t<" + type + ">;" << endl;
+        ctx_ << "return static_cast<underlying>(a) == static_cast<underlying>(b);" << endl;
         ctx_.end_inline_function();
 
         ctx_.start_inline_function("bool", "operator!=", type + " a, int b");
-        ctx_ << "return static_cast<std::underlying_type_t<" + type + ">>(a) != b;" << endl;
+        ctx_ << "using underlying = std::underlying_type_t<" + type + ">;" << endl;
+        ctx_ << "return static_cast<underlying>(a) != static_cast<underlying>(b);" << endl;
         ctx_.end_inline_function();
     }
 
