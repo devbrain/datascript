@@ -69,24 +69,12 @@ TEST_SUITE("Choice Default Case Bug") {
         size_t if_pos = cpp_code.find("if (", read_method_pos);
         REQUIRE(if_pos != std::string::npos);
 
-        // The critical check: there should be an "else" for the default case
-        // Find the closing brace of the if block
-        size_t first_closing_brace = cpp_code.find("}", if_pos);
-        REQUIRE(first_closing_brace != std::string::npos);
-
-        // After the closing brace, we should find "else" (for the default case)
-        std::string after_if = cpp_code.substr(first_closing_brace, 50);
-
-        // THIS IS THE BUG: currently there's no "else", so the default case code runs unconditionally
-        CHECK_MESSAGE(after_if.find("else") != std::string::npos,
-                      "Default case should be in an 'else' block, not executed unconditionally!");
-
         // Verify the default case reads the string_value type
         size_t default_read = cpp_code.find("ne_name_or_id__string_value_default__type::read", if_pos);
         REQUIRE(default_read != std::string::npos);
 
         // The default case read should be INSIDE an else block, not after the if
-        // Count opening braces between if and default_read
+        // Count opening braces between if and default_read, and look for "else"
         int brace_depth = 0;
         bool found_else = false;
         for (size_t i = if_pos; i < default_read; ++i) {
@@ -95,7 +83,7 @@ TEST_SUITE("Choice Default Case Bug") {
             if (cpp_code.substr(i, 4) == "else") found_else = true;
         }
 
-        // If default_read is outside the if block (brace_depth <= 0), that's the bug
+        // If default_read is outside the if block (brace_depth <= 0), that's a bug
         CHECK_MESSAGE(found_else, "Default case should be in an else block!");
         CHECK_MESSAGE(brace_depth > 0, "Default case should be inside a conditional block, not outside!");
     }
