@@ -81,7 +81,7 @@ struct Data {
 
             // Verify resize and read loop
             CHECK(cpp_code.find("obj.items.resize(array_size);") != std::string::npos);
-            CHECK(cpp_code.find("for (size_t i = 0; i < array_size; i++)") != std::string::npos);
+            CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(array_size); i++)") != std::string::npos);
         }
     }
 

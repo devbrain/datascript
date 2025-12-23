@@ -54,8 +54,8 @@ struct PacketHeader {
             CHECK(cpp_code.find("std::array<uint16_t, 10> ports;") != std::string::npos);
 
             // Verify loop-based reading
-            CHECK(cpp_code.find("for (size_t i = 0; i < 4; i++)") != std::string::npos);
-            CHECK(cpp_code.find("for (size_t i = 0; i < 10; i++)") != std::string::npos);
+            CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(4); i++)") != std::string::npos);
+            CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(10); i++)") != std::string::npos);
         }
     }
 

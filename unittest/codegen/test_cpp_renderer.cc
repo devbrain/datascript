@@ -230,7 +230,7 @@ TEST_SUITE("Codegen - C++ Renderer") {
         renderer.render_commands(commands);
         std::string output = renderer.get_output();
 
-        CHECK(contains(output, "for (size_t i = 0; i < 10; i++) {"));
+        CHECK(contains(output, "for (size_t i = 0; i < static_cast<size_t>(10); i++) {"));
         CHECK(contains(output, "// Loop body"));
         CHECK(contains(output, "}"));
     }

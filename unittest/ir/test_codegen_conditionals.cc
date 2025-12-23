@@ -189,7 +189,7 @@ struct DataBlock {
 
             // Verify array reading is inside conditional block
             size_t if_pos = cpp_code.find("if ((obj.has_extra != 0))");
-            size_t for_pos = cpp_code.find("for (size_t i = 0; i < 4; i++)", if_pos);
+            size_t for_pos = cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(4); i++)", if_pos);
             CHECK(for_pos != std::string::npos);
             CHECK(for_pos > if_pos);  // Loop must be after conditional
         }

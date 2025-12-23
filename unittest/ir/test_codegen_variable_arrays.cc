@@ -62,7 +62,7 @@ struct DataBlock {
             CHECK(cpp_code.find("obj.data.resize(obj.count);") != std::string::npos);
 
             // Verify loop-based reading
-            CHECK(cpp_code.find("for (size_t i = 0; i < obj.count; i++)") != std::string::npos);
+            CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(obj.count); i++)") != std::string::npos);
             CHECK(cpp_code.find("obj.data[i] = read_uint32_le(data, end);") != std::string::npos);
 
             // Verify count is read before data
@@ -259,11 +259,11 @@ struct MixedArrays {
             CHECK(cpp_code.find("std::vector<uint8_t> payload;") != std::string::npos);
 
             // Fixed array loops with literal count
-            CHECK(cpp_code.find("for (size_t i = 0; i < 4; i++)") != std::string::npos);
+            CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(4); i++)") != std::string::npos);
 
             // Variable array resizes and loops with count field
             CHECK(cpp_code.find("obj.payload.resize(obj.count);") != std::string::npos);
-            CHECK(cpp_code.find("for (size_t i = 0; i < obj.count; i++)") != std::string::npos);
+            CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(obj.count); i++)") != std::string::npos);
         }
     }
 

@@ -345,6 +345,7 @@ std::string CppLibraryModeGenerator::generate_impl_header(
     output << "#pragma GCC diagnostic ignored \"-Wstringop-overflow\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wsign-conversion\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wconversion\"\n";
+    output << "#pragma GCC diagnostic ignored \"-Wuseless-cast\"\n";
     output << "#endif\n\n";
 
     output << "#include \"" << std::filesystem::path(files.public_header).filename().string() << "\"\n";

@@ -562,6 +562,7 @@ void CppRenderer::render_module_start(const ModuleStartCommand& cmd) {
     ctx_ << "#pragma GCC diagnostic ignored \"-Wstringop-overflow\"" << endl;
     ctx_ << "#pragma GCC diagnostic ignored \"-Wsign-conversion\"" << endl;
     ctx_ << "#pragma GCC diagnostic ignored \"-Wconversion\"" << endl;
+    ctx_ << "#pragma GCC diagnostic ignored \"-Wuseless-cast\"" << endl;
     ctx_ << "#endif" << endl;
     ctx_ << blank;
 
@@ -1312,7 +1313,9 @@ void CppRenderer::render_start_loop(const StartLoopCommand& cmd) {
         count_expr += ".size()";
     }
     std::string init = "size_t " + cmd.loop_var + " = 0";
-    std::string condition = cmd.loop_var + " < " + count_expr;
+    // Cast to size_t to avoid signed/unsigned comparison warning when
+    // count_expr involves integer promotion (e.g., uint8 arithmetic -> int)
+    std::string condition = cmd.loop_var + " < static_cast<size_t>(" + count_expr + ")";
     std::string increment = cmd.loop_var + "++";
     ctx_.start_for(init, condition, increment);
 }

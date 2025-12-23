@@ -163,7 +163,7 @@ struct MultiStatus {
         CHECK(cpp_code.find("std::array<Status, 5> statuses;") != std::string::npos);
 
         // Verify enum array reading
-        CHECK(cpp_code.find("for (size_t i = 0; i < 5; i++)") != std::string::npos);
+        CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(5); i++)") != std::string::npos);
         CHECK(cpp_code.find("obj.statuses[i] = static_cast<Status>(read_uint8(data, end));") != std::string::npos);
     }
 

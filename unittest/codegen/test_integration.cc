@@ -231,7 +231,7 @@ TEST_SUITE("Codegen - Integration Tests") {
         CHECK(!contains(code, ".resize("));
 
         // Should have loop
-        CHECK(contains(code, "for (size_t i = 0; i < 16; i++) {"));
+        CHECK(contains(code, "for (size_t i = 0; i < static_cast<size_t>(16); i++) {"));
     }
 
     TEST_CASE("Read method with variable-size array") {
@@ -265,7 +265,7 @@ TEST_SUITE("Codegen - Integration Tests") {
 
         // Should have array operations
         CHECK(contains(code, "obj.items.resize(obj.count);"));
-        CHECK(contains(code, "for (size_t i = 0; i < obj.count; i++) {"));
+        CHECK(contains(code, "for (size_t i = 0; i < static_cast<size_t>(obj.count); i++) {"));
     }
 
     // ========================================================================

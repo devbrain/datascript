@@ -63,7 +63,7 @@ struct Data {
             CHECK(cpp_code.find("std::array<uint32_t, 10>") == std::string::npos);
 
             // Verify loop uses constant name
-            CHECK(cpp_code.find("for (size_t i = 0; i < SIZE; i++)") != std::string::npos);
+            CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(SIZE); i++)") != std::string::npos);
         }
     }
 
@@ -176,10 +176,10 @@ struct Mixed {
         CHECK(cpp_code.find("std::array<uint32_t, SIZE> const_array;") != std::string::npos);
 
         // Literal loop uses number
-        CHECK(cpp_code.find("for (size_t i = 0; i < 5; i++)") != std::string::npos);
+        CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(5); i++)") != std::string::npos);
 
         // Constant loop uses name
-        CHECK(cpp_code.find("for (size_t i = 0; i < SIZE; i++)") != std::string::npos);
+        CHECK(cpp_code.find("for (size_t i = 0; i < static_cast<size_t>(SIZE); i++)") != std::string::npos);
     }
 
     TEST_CASE("Constant array with different element types") {
