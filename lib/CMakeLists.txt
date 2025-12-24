@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.16)
-project(datascript_lib)
+# =============================================================================
+# DataScript Library
+# =============================================================================
 
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
@@ -9,36 +10,33 @@ if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
-# =========================================================================
-# Option 1: Try to find system re2c first
-# =========================================================================
+# =============================================================================
+# External Tool: re2c Scanner Generator
+# =============================================================================
+
 find_program(RE2C_EXECUTABLE re2c)
 
 if(NOT RE2C_EXECUTABLE)
     message(STATUS "re2c not found, will build from source")
 
-    # Fetch re2c source
     FetchContent_Declare(
         re2c
         GIT_REPOSITORY "https://github.com/skvadrik/re2c.git"
         GIT_TAG "3.1"
     )
 
-    # Use GetProperties + Populate pattern (compatible with ExternalProject_Add)
     FetchContent_GetProperties(re2c)
     if(NOT re2c_POPULATED)
         FetchContent_Populate(re2c)
     endif()
 
-    # Build re2c as external project (since it's a tool, not a library)
-    # Use BUILD_COMMAND to only build the re2c target, skipping tests
-    # Disable all optional features we don't need (Go, Rust backends, docs, libs, benchmarks)
-    # Suppress warnings from third-party code
+    # Build re2c as external project
     if(MSVC)
         set(RE2C_WARNING_FLAGS "/W0")
     else()
         set(RE2C_WARNING_FLAGS "-w")
     endif()
+
     include(ExternalProject)
     ExternalProject_Add(
         re2c_build
@@ -63,18 +61,13 @@ else()
     message(STATUS "Found re2c: ${RE2C_EXECUTABLE}")
 endif()
 
+# =============================================================================
+# Build Lemon Parser Generator (Bundled)
+# =============================================================================
 
-
-# =========================================================================
-# Build lemon from bundled source (it's just 2 files)
-# =========================================================================
 set(LEMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lemon)
 set(LEMPAR_FILE ${LEMON_DIR}/lempar.c)
 set(LEMON_OUT "${CMAKE_CURRENT_BINARY_DIR}/gen")
-set(PARSER_Y ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/datascript_parser.y)
-set(PARSER_C ${LEMON_OUT}/datascript_parser.c)
-set(PARSER_H ${LEMON_OUT}/datascript_parser.h)
-
 
 add_executable(lemon ${LEMON_DIR}/lemon.c)
 # Disable all warnings for third-party lemon tool
@@ -83,118 +76,157 @@ if(MSVC)
 else()
     target_compile_options(lemon PRIVATE -w)
 endif()
+
 file(MAKE_DIRECTORY ${LEMON_OUT})
+
+# =============================================================================
+# Generate Parser
+# =============================================================================
+
+set(PARSER_Y ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/datascript_parser.y)
+set(PARSER_C ${LEMON_OUT}/datascript_parser.c)
+set(PARSER_H ${LEMON_OUT}/datascript_parser.h)
 
 add_custom_command(
     OUTPUT ${PARSER_C} ${PARSER_H}
     COMMAND $<TARGET_FILE:lemon> -T${LEMPAR_FILE} -d${LEMON_OUT} ${PARSER_Y} || true
     DEPENDS ${PARSER_Y} lemon ${LEMPAR_FILE}
-    COMMENT "Generating parser with lemon (accepting shift/reduce conflicts)"
+    COMMENT "Generating parser with lemon"
 )
 
-# =========================================================================
-# Generate scanner from re2c specification
-# =========================================================================
+# =============================================================================
+# Generate Scanner
+# =============================================================================
+
 set(SCANNER_RE ${CMAKE_CURRENT_SOURCE_DIR}/src/parser/datascript_scanner.re)
 set(SCANNER_C ${LEMON_OUT}/datascript_scanner.c)
 
 add_custom_command(
-        OUTPUT ${SCANNER_C}
-        COMMAND ${RE2C_EXECUTABLE} -o ${SCANNER_C} ${SCANNER_RE}
-        DEPENDS ${SCANNER_RE} ${RE2C_TARGET} ${PARSER_H}
-        COMMENT "Generating scanner with re2c"
+    OUTPUT ${SCANNER_C}
+    COMMAND ${RE2C_EXECUTABLE} -o ${SCANNER_C} ${SCANNER_RE}
+    DEPENDS ${SCANNER_RE} ${RE2C_TARGET} ${PARSER_H}
+    COMMENT "Generating scanner with re2c"
 )
 
-# =========================================================================
-# Build library
-# =========================================================================
-add_library(datascript STATIC
-        # Generated C files
-        ${SCANNER_C}
-        ${PARSER_C}
-        ${PARSER_H}
+# =============================================================================
+# Library Sources
+# =============================================================================
 
+set(DATASCRIPT_SOURCES
+    # Generated files
+    ${SCANNER_C}
+    ${PARSER_C}
 
-        src/parser/ast_builder.cc
-        src/parser/ast_builder.h
-        src/parser/ast_holder.hh
-        src/parser/scanner_context.h
-        src/parser/parser_context.h
-        src/parser/parser_context.cc
-        src/parser/parser.cc
-        src/parser/module_loader.cc
+    # Parser
+    src/parser/ast_builder.cc
+    src/parser/parser_context.cc
+    src/parser/parser.cc
+    src/parser/module_loader.cc
 
-        # Semantic analysis
-        src/semantic/diagnostics.cc
-        src/semantic/symbol_table.cc
-        src/semantic/phase0_desugar.cc
-        src/semantic/phase1_symbols.cc
-        src/semantic/phase2_name_resolution.cc
-        src/semantic/phase3_type_checking.cc
-        src/semantic/phase4_constant_evaluation.cc
-        src/semantic/phase5_size_calculation.cc
-        src/semantic/phase6_constraint_validation.cc
-        src/semantic/phase7_reachability.cc
-        src/semantic/analyze.cc
+    # Semantic analysis
+    src/semantic/diagnostics.cc
+    src/semantic/symbol_table.cc
+    src/semantic/phase0_desugar.cc
+    src/semantic/phase1_symbols.cc
+    src/semantic/phase2_name_resolution.cc
+    src/semantic/phase3_type_checking.cc
+    src/semantic/phase4_constant_evaluation.cc
+    src/semantic/phase5_size_calculation.cc
+    src/semantic/phase6_constraint_validation.cc
+    src/semantic/phase7_reachability.cc
+    src/semantic/analyze.cc
 
-        # IR and Code Generation
-        src/ir/ir_builder.cc
+    # IR
+    src/ir/ir_builder.cc
 
-        # Command-based Code Generation
-        src/codegen/base_renderer.cc
-        src/codegen/command_builder.cc
-        src/codegen/code_writer.cc
-        src/codegen/cpp/cpp_code_writer.cc
-        src/codegen/cpp/cpp_writer_context.cc
-        src/codegen/cpp/cpp_helper_generator.cc
-        src/codegen/cpp/cpp_expression_renderer.cc
-        src/codegen/cpp/cpp_library_mode.cc
-        src/codegen/cpp/cpp_renderer.cc
-        src/codegen/cpp/cpp_renderer_plugin.cc
-        src/codegen/datascript/datascript_renderer.cc
-        src/codegen/renderer_registry.cc
+    # Code Generation
+    src/codegen/base_renderer.cc
+    src/codegen/command_builder.cc
+    src/codegen/code_writer.cc
+    src/codegen/cpp/cpp_code_writer.cc
+    src/codegen/cpp/cpp_writer_context.cc
+    src/codegen/cpp/cpp_helper_generator.cc
+    src/codegen/cpp/cpp_expression_renderer.cc
+    src/codegen/cpp/cpp_library_mode.cc
+    src/codegen/cpp/cpp_renderer.cc
+    src/codegen/cpp/cpp_renderer_plugin.cc
+    src/codegen/datascript/datascript_renderer.cc
+    src/codegen/renderer_registry.cc
 
-        # Kaitai Struct to IR Builder
-        src/ksy/ksy_to_ir_builder.cc
-
-        include/datascript/ast.hh
-        include/datascript/parser.hh
-        include/datascript/parser_error.hh
-        include/datascript/semantic.hh
-        include/datascript/ir.hh
-        include/datascript/ir_builder.hh
-        include/datascript/codegen.hh
-        include/datascript/codegen_commands.hh
-        include/datascript/command_builder.hh
-        include/datascript/codegen/code_writer.hh
-        include/datascript/codegen/option_description.hh
-        include/datascript/codegen/cpp/cpp_code_writer.hh
-        include/datascript/codegen/cpp/cpp_helper_generator.hh
-        include/datascript/codegen/cpp/cpp_expression_renderer.hh
-        include/datascript/codegen/cpp/cpp_renderer.hh
-        include/datascript/codegen/datascript/datascript_renderer.hh
-        include/datascript/base_renderer.hh
-        include/datascript/renderer_registry.hh
-        include/datascript/ksy/ksy_to_ir_builder.hh
+    # Kaitai Struct support
+    src/ksy/ksy_to_ir_builder.cc
 )
+
+# =============================================================================
+# Library Target
+# =============================================================================
+
+if(NEUTRINO_DATASCRIPT_BUILD_SHARED)
+    add_library(datascript SHARED ${DATASCRIPT_SOURCES})
+else()
+    add_library(datascript STATIC ${DATASCRIPT_SOURCES})
+endif()
+
+# Create neutrino:: alias
+add_library(neutrino::datascript ALIAS datascript)
+
+# =============================================================================
+# Target Configuration
+# =============================================================================
+
+target_compile_features(datascript PUBLIC cxx_std_20)
 
 target_include_directories(datascript
-        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src/
-        PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_BINARY_DIR}
+)
 
 # External dependencies as SYSTEM to suppress warnings
 target_include_directories(datascript SYSTEM
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/external)
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/external
+)
+
+# =============================================================================
+# Compiler Warnings
+# =============================================================================
 
 # Apply strict warnings to the library
 target_set_strict_warnings(datascript)
 
 # Disable warnings for generated C files (re2c scanner, lemon parser)
-# These are auto-generated and may contain code patterns that trigger warnings
 if(MSVC)
     set_source_files_properties(${SCANNER_C} ${PARSER_C} PROPERTIES COMPILE_FLAGS "/W0")
 else()
     set_source_files_properties(${SCANNER_C} ${PARSER_C} PROPERTIES COMPILE_FLAGS "-w")
 endif()
 
+# =============================================================================
+# Library Properties
+# =============================================================================
+
+set_target_properties(datascript PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_VERSION_MAJOR}
+    POSITION_INDEPENDENT_CODE ON
+    FOLDER "Libraries"
+)
+
+# =============================================================================
+# Export Header (for shared library builds)
+# =============================================================================
+
+if(NEUTRINO_DATASCRIPT_BUILD_SHARED)
+    include(GenerateExportHeader)
+    generate_export_header(datascript
+        EXPORT_FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/datascript/export.h
+    )
+    target_include_directories(datascript
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+    )
+endif()

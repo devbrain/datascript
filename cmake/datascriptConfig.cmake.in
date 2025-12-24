@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# No external dependencies required
+
+include("${CMAKE_CURRENT_LIST_DIR}/datascriptTargets.cmake")
+
+# Include the DataScriptGenerate module for datascript_generate() function
+include("${CMAKE_CURRENT_LIST_DIR}/DataScriptGenerate.cmake")
+
+check_required_components(datascript)
