@@ -196,7 +196,7 @@ target_include_directories(datascript SYSTEM
 # =============================================================================
 
 # Apply strict warnings to the library
-target_set_strict_warnings(datascript)
+neutrino_target_warnings(datascript)
 
 # Disable warnings for generated C files (re2c scanner, lemon parser)
 if(MSVC)

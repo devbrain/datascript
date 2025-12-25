@@ -220,8 +220,8 @@ target_compile_definitions(datascript_unittest
         UNITTEST_HOME="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
-# Apply warnings (but don't treat as errors for test code)
-target_set_warnings_no_error(datascript_unittest)
+# Apply warnings
+neutrino_target_warnings(datascript_unittest)
 
 # Set target properties
 set_target_properties(datascript_unittest PROPERTIES
