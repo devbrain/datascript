@@ -77,6 +77,14 @@ else()
     target_compile_options(lemon PRIVATE -w)
 endif()
 
+# Put lemon in a separate directory when not a top-level project
+neutrino_is_top_level(_datascript_is_top_level)
+if(NOT _datascript_is_top_level)
+    set_target_properties(lemon PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tools"
+    )
+endif()
+
 file(MAKE_DIRECTORY ${LEMON_OUT})
 
 # =============================================================================
