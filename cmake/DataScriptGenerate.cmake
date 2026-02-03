@@ -83,11 +83,14 @@ function(_datascript_extract_package schema_file out_package)
     file(READ "${schema_file}" schema_content)
 
     # Look for package declaration: package foo.bar.baz;
-    # Match: "package" followed by whitespace, then identifier(s) separated by dots, then semicolon
-    string(REGEX MATCH "package[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_.]*)[^;]*;" package_match "${schema_content}")
+    # Match: "package" followed by whitespace, then identifier(s) separated by dots,
+    # then optional whitespace, then semicolon.
+    # NOTE: Only whitespace is allowed between identifier and semicolon to avoid
+    # matching "package" in comments like "This package defines..."
+    string(REGEX MATCH "package[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_.]*)[ \t\r\n]*;" package_match "${schema_content}")
 
     if(package_match)
-        string(REGEX REPLACE "package[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_.]*)[^;]*;" "\\1" package_name "${package_match}")
+        string(REGEX REPLACE "package[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_.]*)[ \t\r\n]*;" "\\1" package_name "${package_match}")
         set(${out_package} "${package_name}" PARENT_SCOPE)
     else()
         set(${out_package} "" PARENT_SCOPE)
