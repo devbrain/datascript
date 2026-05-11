@@ -331,6 +331,12 @@ std::string CppLibraryModeGenerator::generate_impl_header(
     output << "#pragma clang diagnostic ignored \"-Wparentheses-equality\"\n";
     output << "#pragma clang diagnostic ignored \"-Wsign-conversion\"\n";
     output << "#pragma clang diagnostic ignored \"-Wimplicit-int-conversion\"\n";
+    // The FieldMeta reflection tables use offsetof on the generated structs.
+    // Choice structs hold a std::variant member, which makes them non-
+    // standard-layout — clang emits -Winvalid-offsetof there, which is
+    // -Werror on clang-cl. The cast layout is identical to what the
+    // sizeof+offsetof reflection assumes, so silence the warning here.
+    output << "#pragma clang diagnostic ignored \"-Winvalid-offsetof\"\n";
     output << "#elif defined(_MSC_VER)\n";
     output << "#pragma warning(push)\n";
     output << "#pragma warning(disable: 4189)  // local variable initialized but not referenced\n";
@@ -346,6 +352,9 @@ std::string CppLibraryModeGenerator::generate_impl_header(
     output << "#pragma GCC diagnostic ignored \"-Wsign-conversion\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wconversion\"\n";
     output << "#pragma GCC diagnostic ignored \"-Wuseless-cast\"\n";
+    // Same rationale as the clang block — gcc also warns on offsetof
+    // for non-standard-layout types under -Winvalid-offsetof.
+    output << "#pragma GCC diagnostic ignored \"-Winvalid-offsetof\"\n";
     output << "#endif\n\n";
 
     output << "#include \"" << std::filesystem::path(files.public_header).filename().string() << "\"\n";
