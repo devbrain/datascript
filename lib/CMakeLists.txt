@@ -69,21 +69,12 @@ set(LEMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lemon)
 set(LEMPAR_FILE ${LEMON_DIR}/lempar.c)
 set(LEMON_OUT "${CMAKE_CURRENT_BINARY_DIR}/gen")
 
-add_executable(lemon ${LEMON_DIR}/lemon.c)
-# Disable all warnings for third-party lemon tool
-if(MSVC)
-    target_compile_options(lemon PRIVATE /W0)
-else()
-    target_compile_options(lemon PRIVATE -w)
-endif()
-
-# Put lemon in a separate directory when not a top-level project
-neutrino_is_top_level(_datascript_is_top_level)
-if(NOT _datascript_is_top_level)
-    set_target_properties(lemon PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tools"
-    )
-endif()
+include(NeutrinoHostTools)
+add_library(lemon_interface INTERFACE) # placeholder for warning suppression if needed, or just let bootstrap handle it
+neutrino_bootstrap_local_tool(lemon
+    SOURCES ${LEMON_DIR}/lemon.c
+    STD 11
+)
 
 file(MAKE_DIRECTORY ${LEMON_OUT})
 
