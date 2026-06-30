@@ -70,6 +70,7 @@ set(LEMPAR_FILE ${LEMON_DIR}/lempar.c)
 set(LEMON_OUT "${CMAKE_CURRENT_BINARY_DIR}/gen")
 
 include(NeutrinoHostTools)
+message(STATUS "[DEBUG-LEMON] NEUTRINO_CROSS_COMPILING=${NEUTRINO_CROSS_COMPILING} CMAKE_CROSSCOMPILING=${CMAKE_CROSSCOMPILING}")
 add_library(lemon_interface INTERFACE) # placeholder for warning suppression if needed, or just let bootstrap handle it
 neutrino_bootstrap_local_tool(lemon
     SOURCES ${LEMON_DIR}/lemon.c
