@@ -87,11 +87,14 @@ function(_datascript_extract_package schema_file out_package)
     # then optional whitespace, then semicolon.
     # NOTE: Only whitespace is allowed between identifier and semicolon to avoid
     # matching "package" in comments like "This package defines..."
+    # Read the package name from the capture group: CMake's REGEX MATCH drops the
+    # trailing ';' from the returned match, so re-running this same pattern through
+    # REGEX REPLACE would fail to match (and leave the "package " keyword in place),
+    # yielding a bogus package name and a phantom output directory.
     string(REGEX MATCH "package[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_.]*)[ \t\r\n]*;" package_match "${schema_content}")
 
     if(package_match)
-        string(REGEX REPLACE "package[ \t\r\n]+([a-zA-Z_][a-zA-Z0-9_.]*)[ \t\r\n]*;" "\\1" package_name "${package_match}")
-        set(${out_package} "${package_name}" PARENT_SCOPE)
+        set(${out_package} "${CMAKE_MATCH_1}" PARENT_SCOPE)
     else()
         set(${out_package} "" PARENT_SCOPE)
     endif()
