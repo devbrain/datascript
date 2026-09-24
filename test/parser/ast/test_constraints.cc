@@ -302,7 +302,7 @@ TEST_SUITE("Parser - Constraints") {
         CHECK(mod.constraints[0].params[2].name == "c");
 
         // All should be uint16
-        for (int i = 0; i < 3; i++) {
+        for (size_t i = 0; i < 3; i++) {
             auto* type = std::get_if<datascript::ast::primitive_type>(&mod.constraints[0].params[i].param_type.node);
             REQUIRE(type != nullptr);
             CHECK(type->is_signed == false);

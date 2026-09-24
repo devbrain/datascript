@@ -17,14 +17,18 @@ project(datascript
 include(FetchContent)
 
 if(NOT DEFINED NEUTRINO_CMAKE_DIR)
-    FetchContent_Declare(
-        neutrino_cmake
-        GIT_REPOSITORY https://github.com/devbrain/neutrino-cmake.git
-        GIT_TAG master
-        GIT_SHALLOW TRUE
-    )
-    FetchContent_MakeAvailable(neutrino_cmake)
-    set(NEUTRINO_CMAKE_DIR "${neutrino_cmake_SOURCE_DIR}/cmake")
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../neutrino-cmake/cmake")
+        set(NEUTRINO_CMAKE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../neutrino-cmake/cmake")
+    else()
+        FetchContent_Declare(
+            neutrino_cmake
+            GIT_REPOSITORY https://github.com/devbrain/neutrino-cmake.git
+            GIT_TAG master
+            GIT_SHALLOW TRUE
+        )
+        FetchContent_MakeAvailable(neutrino_cmake)
+        set(NEUTRINO_CMAKE_DIR "${neutrino_cmake_SOURCE_DIR}/cmake")
+    endif()
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${NEUTRINO_CMAKE_DIR}")

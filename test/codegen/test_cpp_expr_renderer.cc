@@ -23,7 +23,7 @@ TEST_SUITE("Codegen - C++ Expression Renderer") {
     ir::expr make_literal_int(int64_t value) {
         ir::expr e;
         e.type = ir::expr::literal_int;
-        e.int_value = value;
+        e.int_value = static_cast<uint64_t>(value);
         return e;
     }
 

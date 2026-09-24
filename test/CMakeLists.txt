@@ -211,6 +211,7 @@ target_link_libraries(datascript_unittest
 target_include_directories(datascript_unittest
     PRIVATE
         ${CMAKE_SOURCE_DIR}/lib/src
+    SYSTEM PRIVATE
         ${CODEGEN_OUTPUT_DIR}
         ${LIBRARY_MODE_OUTPUT_DIR}
 )
@@ -222,6 +223,9 @@ target_compile_definitions(datascript_unittest
 
 # Apply warnings
 neutrino_target_warnings(datascript_unittest)
+if(NOT MSVC)
+    target_compile_options(datascript_unittest PRIVATE -Wno-old-style-cast)
+endif()
 
 # Set target properties
 set_target_properties(datascript_unittest PROPERTIES
